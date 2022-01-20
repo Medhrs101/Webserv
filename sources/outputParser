@@ -1,0 +1,402 @@
+got file content successfully
+server
+{
+listen          80;
+listen          808;
+listen          8087;
+listen          8073;
+listen         80738;
+host localhost;
+server_name     example.com drdfdr er erht;
+client_max_body_size    1m;
+error_page 403 /errors/403.html;
+error_page 404 /errors/404.html;
+error_page 500 /errors/500.html;
+error_page 502 /errors/502.html;
+root /Users/moharras/Desktop/Webserv/public;
+location /
+{
+autoindex off;
+index index.html;
+allow_methods [GET, POST,DELETE];
+}
+location /return
+{
+return 301 /;
+}
+location *.php
+{
+allow_methods [GET,POST];
+fastcgi_pass /Users/arraji/.brew/bin/php-cgi;
+}
+location *.py
+{
+allow_methods [GET,POST];
+fastcgi_pass /usr/bin/python;
+}
+location /upload
+{
+allow_methods [ POST ];
+upload_enable on;
+upload_store /upload;
+}
+}
+server
+{
+listen          80;
+host 0.0.0.0;
+client_max_body_size    1m;
+error_page 403 /errors/403.html;
+error_page 404 /errors/404.html;
+error_page 500 /errors/500.html;
+error_page 502 /errors/502.html;
+root /Users/arraji/Desktop/webserv/public;
+location /
+{
+autoindex off;
+index index.html;
+allow_methods [GET,POST,DELETE];
+}
+location /return
+{
+return 301 /;
+}
+location *.php
+{
+allow_methods [GET,POST];
+fastcgi_pass /Users/arraji/.brew/bin/php-cgi;
+}
+location *.py
+{
+allow_methods [GET,POST];
+fastcgi_pass /usr/bin/python;
+}
+location /upload
+{
+allow_methods [POST, GET];
+upload_enable on;
+upload_store /upload;
+}
+}
+
+
+servers have been indexed successfully
+
+======================== SERVERS INDEXING ==========================
+
+start = [1], end[41]
+start = [43], end[78]
+content has been parsed successfully
+======================== SERVERS PARSING ==========================
+
+==================== ServerData ===================
+server port: [80]
+all ports: [80]  [808]  [8087]  [8073]  [80738]  
+host :[127.0.0.1]
+names: [ example.com ]  [ drdfdr ]  [ er ]  [ erht ]  
+client body size: [1]
+error page: code [403], path [/errors/403.html]
+error page: code [404], path [/errors/404.html]
+error page: code [500], path [/errors/500.html]
+error page: code [502], path [/errors/502.html]
+root dir: [/Users/moharras/Desktop/Webserv/public]
+
+================ Location [/]===============
+ autoindex : [false]
+ index : [index.html]
+ allowed methods: [ DELETE ]   [ GET ]   [ POST ]  
+ upload enabled : false
+============== Location End [/]===============
+
+================ Location [/return]===============
+ autoindex : [false]
+ allowed methods: [ GET ]  
+ Is redirection : true
+ return, code : [301], url: [/]
+ upload enabled : false
+============== Location End [/return]===============
+
+================ Location [.php]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/Users/arraji/.brew/bin/php-cgi]
+ upload enabled : false
+============== Location End [.php]===============
+
+================ Location [.py]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/usr/bin/python]
+ upload enabled : false
+============== Location End [.py]===============
+
+================ Location [/upload]===============
+ autoindex : [false]
+ allowed methods: [ POST ]  
+ upload enabled : true
+ upload store: [/upload]
+============== Location End [/upload]===============
+==================== ServerData End =================
+
+
+==================== ServerData ===================
+server port: [808]
+all ports: [80]  [808]  [8087]  [8073]  [80738]  
+host :[127.0.0.1]
+names: [ example.com ]  [ drdfdr ]  [ er ]  [ erht ]  
+client body size: [1]
+error page: code [403], path [/errors/403.html]
+error page: code [404], path [/errors/404.html]
+error page: code [500], path [/errors/500.html]
+error page: code [502], path [/errors/502.html]
+root dir: [/Users/moharras/Desktop/Webserv/public]
+
+================ Location [/]===============
+ autoindex : [false]
+ index : [index.html]
+ allowed methods: [ DELETE ]   [ GET ]   [ POST ]  
+ upload enabled : false
+============== Location End [/]===============
+
+================ Location [/return]===============
+ autoindex : [false]
+ allowed methods: [ GET ]  
+ Is redirection : true
+ return, code : [301], url: [/]
+ upload enabled : false
+============== Location End [/return]===============
+
+================ Location [.php]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/Users/arraji/.brew/bin/php-cgi]
+ upload enabled : false
+============== Location End [.php]===============
+
+================ Location [.py]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/usr/bin/python]
+ upload enabled : false
+============== Location End [.py]===============
+
+================ Location [/upload]===============
+ autoindex : [false]
+ allowed methods: [ POST ]  
+ upload enabled : true
+ upload store: [/upload]
+============== Location End [/upload]===============
+==================== ServerData End =================
+
+
+==================== ServerData ===================
+server port: [8087]
+all ports: [80]  [808]  [8087]  [8073]  [80738]  
+host :[127.0.0.1]
+names: [ example.com ]  [ drdfdr ]  [ er ]  [ erht ]  
+client body size: [1]
+error page: code [403], path [/errors/403.html]
+error page: code [404], path [/errors/404.html]
+error page: code [500], path [/errors/500.html]
+error page: code [502], path [/errors/502.html]
+root dir: [/Users/moharras/Desktop/Webserv/public]
+
+================ Location [/]===============
+ autoindex : [false]
+ index : [index.html]
+ allowed methods: [ DELETE ]   [ GET ]   [ POST ]  
+ upload enabled : false
+============== Location End [/]===============
+
+================ Location [/return]===============
+ autoindex : [false]
+ allowed methods: [ GET ]  
+ Is redirection : true
+ return, code : [301], url: [/]
+ upload enabled : false
+============== Location End [/return]===============
+
+================ Location [.php]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/Users/arraji/.brew/bin/php-cgi]
+ upload enabled : false
+============== Location End [.php]===============
+
+================ Location [.py]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/usr/bin/python]
+ upload enabled : false
+============== Location End [.py]===============
+
+================ Location [/upload]===============
+ autoindex : [false]
+ allowed methods: [ POST ]  
+ upload enabled : true
+ upload store: [/upload]
+============== Location End [/upload]===============
+==================== ServerData End =================
+
+
+==================== ServerData ===================
+server port: [8073]
+all ports: [80]  [808]  [8087]  [8073]  [80738]  
+host :[127.0.0.1]
+names: [ example.com ]  [ drdfdr ]  [ er ]  [ erht ]  
+client body size: [1]
+error page: code [403], path [/errors/403.html]
+error page: code [404], path [/errors/404.html]
+error page: code [500], path [/errors/500.html]
+error page: code [502], path [/errors/502.html]
+root dir: [/Users/moharras/Desktop/Webserv/public]
+
+================ Location [/]===============
+ autoindex : [false]
+ index : [index.html]
+ allowed methods: [ DELETE ]   [ GET ]   [ POST ]  
+ upload enabled : false
+============== Location End [/]===============
+
+================ Location [/return]===============
+ autoindex : [false]
+ allowed methods: [ GET ]  
+ Is redirection : true
+ return, code : [301], url: [/]
+ upload enabled : false
+============== Location End [/return]===============
+
+================ Location [.php]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/Users/arraji/.brew/bin/php-cgi]
+ upload enabled : false
+============== Location End [.php]===============
+
+================ Location [.py]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/usr/bin/python]
+ upload enabled : false
+============== Location End [.py]===============
+
+================ Location [/upload]===============
+ autoindex : [false]
+ allowed methods: [ POST ]  
+ upload enabled : true
+ upload store: [/upload]
+============== Location End [/upload]===============
+==================== ServerData End =================
+
+
+==================== ServerData ===================
+server port: [80738]
+all ports: [80]  [808]  [8087]  [8073]  [80738]  
+host :[127.0.0.1]
+names: [ example.com ]  [ drdfdr ]  [ er ]  [ erht ]  
+client body size: [1]
+error page: code [403], path [/errors/403.html]
+error page: code [404], path [/errors/404.html]
+error page: code [500], path [/errors/500.html]
+error page: code [502], path [/errors/502.html]
+root dir: [/Users/moharras/Desktop/Webserv/public]
+
+================ Location [/]===============
+ autoindex : [false]
+ index : [index.html]
+ allowed methods: [ DELETE ]   [ GET ]   [ POST ]  
+ upload enabled : false
+============== Location End [/]===============
+
+================ Location [/return]===============
+ autoindex : [false]
+ allowed methods: [ GET ]  
+ Is redirection : true
+ return, code : [301], url: [/]
+ upload enabled : false
+============== Location End [/return]===============
+
+================ Location [.php]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/Users/arraji/.brew/bin/php-cgi]
+ upload enabled : false
+============== Location End [.php]===============
+
+================ Location [.py]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/usr/bin/python]
+ upload enabled : false
+============== Location End [.py]===============
+
+================ Location [/upload]===============
+ autoindex : [false]
+ allowed methods: [ POST ]  
+ upload enabled : true
+ upload store: [/upload]
+============== Location End [/upload]===============
+==================== ServerData End =================
+
+
+==================== ServerData ===================
+server port: [80]
+all ports: [80]  
+host :[0.0.0.0]
+names: 
+client body size: [1]
+error page: code [403], path [/errors/403.html]
+error page: code [404], path [/errors/404.html]
+error page: code [500], path [/errors/500.html]
+error page: code [502], path [/errors/502.html]
+root dir: [/Users/arraji/Desktop/webserv/public]
+
+================ Location [/]===============
+ autoindex : [false]
+ index : [index.html]
+ allowed methods: [ DELETE ]   [ GET ]   [ POST ]  
+ upload enabled : false
+============== Location End [/]===============
+
+================ Location [/return]===============
+ autoindex : [false]
+ allowed methods: [ GET ]  
+ Is redirection : true
+ return, code : [301], url: [/]
+ upload enabled : false
+============== Location End [/return]===============
+
+================ Location [.php]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/Users/arraji/.brew/bin/php-cgi]
+ upload enabled : false
+============== Location End [.php]===============
+
+================ Location [.py]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ Is CGI : true
+ CGI path: [/usr/bin/python]
+ upload enabled : false
+============== Location End [.py]===============
+
+================ Location [/upload]===============
+ autoindex : [false]
+ allowed methods: [ GET ]   [ POST ]  
+ upload enabled : true
+ upload store: [/upload]
+============== Location End [/upload]===============
+==================== ServerData End =================
+

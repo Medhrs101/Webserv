@@ -6,21 +6,34 @@
 class request
 {
 private:
-	std::stringstream	_reqstr;
+	std::string	_reqstr;
 	std::string	_reqLine;
 	std::string _reqMethod;
 	std::string _reqUri;
 	std::string	_httpVersion;
 	std::string	*_reqHeader;
 	std::map<std::string, std::string> 	_header;
+	std::string	_bodyMessage;
+	int			_statusCode;
+	std::vector<ServerData> _data;
 
 public:
 	request();
-	request(std::string );
+	request(std::string, std::vector<ServerData>);
 	~request();
 
-	void	getRequestLine();
-	void	hundleReqLine();
+	void	requestParser();
+	void	parseRequestLine(std::string);
+	void	parseReqHeader(std::string);
+	void	parseBody(std::string);
+
+	void	hundleMethod(std::string& , size_t &);
+	void	hundleUri(std::string& , size_t &);
+	void	hundleHttpv(std::string& , size_t &);
+
+	void	HeaderLine(std::string&, std::string & , size_t&);
+	void	headerInMap(std::string &, std::string &, std::string &);
+	// void	getRequestLine();
 	class ErrorException : public std::exception
 	{
 		private:

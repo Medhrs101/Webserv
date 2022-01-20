@@ -1,0 +1,28 @@
+[2022-01-20 16:20:09]: Error: Could not open configuration file
+[2022-01-20 16:20:31]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:21:16]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:23:14]: Error: Invalid arguments: USAGE [ ./webserv configFile.conf ]
+[2022-01-20 16:23:38]: Error: Invalid arguments: USAGE [ ./webserv configFile.conf ]
+[2022-01-20 16:23:42]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:24:01]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:24:02]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:24:03]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:24:13]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:24:31]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:24:40]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:24:48]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:25:04]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:25:46]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:27:26]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:28:45]: Error: Invalid arguments: USAGE [ ./webserv configFile.conf ]
+[2022-01-20 16:28:53]: Error: Could not open configuration file
+[2022-01-20 16:29:04]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:37:46]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:37:46]: Error: Error in the request Line
+[2022-01-20 16:38:14]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:38:14]: Error: Error in the request Line
+[2022-01-20 16:38:39]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 16:38:39]: Error: Error in header fieldes
+[2022-01-20 16:39:39]: Error: Did you mean (listen) field in this line -> [listenjkjgk          80738;] ?
+[2022-01-20 17:07:21]: configuration ../webserv.conf file has been parsed successfully
+[2022-01-20 17:07:21]: Error: Error in header fieldes
