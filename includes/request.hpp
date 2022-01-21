@@ -44,7 +44,7 @@ public:
 			ErrorException(const char *message);
 	};
 
-	//Methods for debuging
+	//Methods for debuging It will be deleted later
 	void	printReqData();
 };
 
