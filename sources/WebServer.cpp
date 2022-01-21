@@ -14,7 +14,6 @@
         if (res == 0){
             std::cout << "---------------- Close Connetion" << "----------------"  << std::endl;
             close(fd);
-            // FD_CLR(fd, &_read_fds);
         }
         else if (res < 0){
             throw Socketexeption("cant read Req");
