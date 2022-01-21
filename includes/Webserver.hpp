@@ -13,7 +13,8 @@
             sock_fd     master_socket;
             size_t      _addrlen;
             std::vector<int>    master_fds;
-            request     req;  // TODO:
+            request     req;
+
         public:
             server(std::vector<ServerData> __data);
             void    init();
