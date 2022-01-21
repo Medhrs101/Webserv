@@ -6,7 +6,7 @@ request::request(/* args */)
 
 }
 
-request::request(std::string req, std::vector<ServerData> data): _reqstr(req), _statusCode(200), _data(data)
+request::request(std::vector<ServerData> data):_statusCode(200), _data(data)
 {
 	//NOTE:: just for the moment;
 	/*NOTE:: first of all i will parse the request begin with:
@@ -15,14 +15,15 @@ request::request(std::string req, std::vector<ServerData> data): _reqstr(req), _
 	3-/message bodyc
 	*/
 	/* NOTE: requestParser should parse the request here; */
-	this->requestParser();
+	// this->requestParser();
 	// this->getRequestLine();
 	// this->hundleReqLine();
 }
 
 
-void    request::requestParser()
+void    request::requestParser(std::string req)
 {
+	_reqstr = req;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -36,6 +37,7 @@ void    request::requestParser()
 	j = j + 4;
 	this->parseReqHeader(_reqstr.substr(i, j - i));
 	this->parseBody(_reqstr.substr(j, _reqLine.size() - j));
+	this->printReqData();
 }
 
 void	request::parseBody(std::string	reqBody)

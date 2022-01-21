@@ -6,7 +6,10 @@ int main(int ac, char **av)
 	try
 	{
 		ConfigParser parser(ac, av);
-		request req("GET ///// HTTP/1.1\r\n\r\n", parser.getServers());
+
+		server Server(parser.getServers());
+        Server.init();
+		// request req("GET ///// HTTP/1.1\r\n\r\n", parser.getServers());
 	}
 	catch (std::exception &e)
 	{

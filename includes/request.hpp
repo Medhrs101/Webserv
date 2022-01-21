@@ -19,10 +19,11 @@ private:
 
 public:
 	request();
-	request(std::string, std::vector<ServerData>);
+	request(std::vector<ServerData>);
 	~request();
 
-	void	requestParser();
+	std::string	getBody() const {return _bodyMessage;};
+	void	requestParser(std::string req);
 	void	parseRequestLine(std::string);
 	void	parseReqHeader(std::string);
 	void	parseBody(std::string);

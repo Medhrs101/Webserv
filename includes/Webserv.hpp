@@ -31,6 +31,9 @@
 #include "ConfigParser.hpp"
 #include "request.hpp"
 
+#include "Webserver.hpp"
+#include "socket.hpp"
+
 
 #define LOGS_FILE "webserv_logs"
 
