@@ -1,5 +1,8 @@
 #include "../includes/Webserv.hpp"
 
+    __socket::__socket(){
+        return ;
+    }
     __socket::__socket(struct sockaddr_in &address):_address(address){
         // if ((_sockFD = socket(AF_INET, SOCK_STREAM,0)) < 0){
         //     // std::cerr << "Error at creation :" << strerror(errno);

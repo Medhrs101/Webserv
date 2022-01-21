@@ -1,8 +1,8 @@
-#ifndef WEBSERV_20COPY_HPP
-#define WEBSERV_20COPY_HPP
+#ifndef WEBSERVER_HPP
+#define WEBSERVER_HPP
 #include "socket.hpp"
 #include "../includes/Webserv.hpp"
-#include <sys/event.h>
+// #include <sys/event.h>
 
     class server{
         private:
@@ -13,7 +13,8 @@
             sock_fd     master_socket;
             size_t      _addrlen;
             std::vector<int>    master_fds;
-            request     req;  // TODO:
+            request     req;
+
         public:
             server(std::vector<ServerData> __data);
             void    init();
@@ -21,4 +22,4 @@
             std::string readReq(int fd, size_t _size);
             ~server();
     };
-#endif /* WEBSERV_20COPY_HPP */
+#endif
