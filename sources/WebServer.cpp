@@ -1,7 +1,7 @@
 #include "../includes/Webserv.hpp"
 #include <sys/ioctl.h>
 
-    server::server(std::vector<ServerData> __data):sock(_address), _data(__data), req(__data)
+    server::server(std::vector<ServerData> __data): _data(__data), req(__data)
     {
         _addrlen = sizeof(_address);
     }
@@ -24,33 +24,40 @@
         }
         return ret;
     }
+
+    void    server::initial_sockets(){
+        for(int i = 0; i < _data.size();i++){
+            _socket_list.push_back(__socket());
+            _socket_list[i].init(_data[i].getPort(), _data[i].getHost());
+            if (_socket_list[i].listen_socket() < 0){
+                std::cerr << " Error : skiping server -listen- " << _data[i].getHost() << ":" << _data[i].getPort() << std::endl;
+                shutdown(_socket_list[i].getsocket(), SHUT_RDWR);
+            }
+        }
+    };
     void    server::init(){
         // struct kevent listning_event;
         // struct kevent ch_event;
         int     kq;
-        int     epollfd, n;
-        int     kv; 
+        int     sockId;
+        int     n;
+        int     kv;
         int     new_socket;
         std::string req_string;
         std::vector<int>::iterator it;
-        struct epoll_event event;
         // create kqueue
-        epollfd = epoll_create1(0);
         // kq = kqueue();
-        for (int i = 0; i != _data.size(); i++)
+        _poll = epoll_create1(0);
+        initial_sockets();
+        for (int i = 0; i != _socket_list.size(); i++)
         {
-            master_socket = sock.init( _data[i].getPort(), _data[i].getHost());
-            
-            fcntl(master_socket, F_SETFL, O_NONBLOCK);
-            if (listen(master_socket, 3) < 0){
-                throw Socketexeption("listen");
-            }
-            master_fds.push_back(master_socket);
-            event.events = EPOLLIN;
-            event.data.fd = master_socket;
+            sockId = _socket_list[i].getsocket();
+            master_fds.push_back(sockId);
+            _event.events = EPOLLIN;
+            _event.data.fd = sockId;
             // add file descriptor to queue
             // EV_SET(&listning_event, master_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
-            if (epoll_ctl(epollfd, EPOLL_CTL_ADD, master_socket, &event) == -1){
+            if (epoll_ctl(_poll, EPOLL_CTL_ADD, sockId, &_event) == -1){
                 perror("epoll_ctl: listen_sock");
                 exit(EXIT_FAILURE);
             }
@@ -58,7 +65,7 @@
             // if (kevent(kq, &listning_event, 1, NULL, 0, NULL) < 0){
             //     throw Socketexeption("add to queue");
             // }
-            std::cout << "server  " << event.data.fd << std::endl;
+            std::cout << "server  " << _event.data.fd << std::endl;
         }
         
         std::cout << "server listening" << std::endl;
@@ -68,25 +75,25 @@
         {
             std::cout << "---------------- waiting for EVENT ----------------" << std::endl;
             // kv = kevent(kq, NULL, 0, &ch_event, 1, NULL);
-            kv = epoll_wait(epollfd, &event, 1, -1);
+            kv = epoll_wait(_poll, &_event, 1, -1);
             if ( kv == -1)
                 throw Socketexeption("kevent");
             else{
                 // int event_fd = ch_event.ident;
-                int event_fd = event.data.fd;
-                // if (ch_event.flags & EV_EOF){
-                //     std::cout << "---------------- Close Connetion" << "----------------"  << std::endl;
-                //     close(event_fd);
-                // }
+                int event_fd = _event.data.fd;
+                if (_event.events & EPOLLERR){
+                    std::cout << "---------------- Close Connetion" << "----------------"  << std::endl;
+                    close(event_fd);
+                }
                 /*else */if ((it = std::find(master_fds.begin(), master_fds.end(), event_fd)) != master_fds.end()){
                          new_socket = accept(*it, (struct sockaddr *) &_address, (socklen_t *) &_addrlen);
                         if (new_socket < 0){
                             throw Socketexeption("accept");
                         }
                         std::cout << "---------------- new connecticon " <<  new_socket << "----------------"  << std::endl;
-                        event.events = EPOLLIN | EPOLLET;
-                        event.data.fd = new_socket;
-                        if (epoll_ctl(epollfd, EPOLL_CTL_ADD, new_socket, &event) == -1) {
+                        _event.events = EPOLLIN | EPOLLET;
+                        _event.data.fd = new_socket;
+                        if (epoll_ctl(_poll, EPOLL_CTL_ADD, new_socket, &_event) == -1) {
                             perror("epoll_ctl: conn_sock");
                             exit(EXIT_FAILURE);
                         }

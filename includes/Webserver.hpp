@@ -6,18 +6,19 @@
 
     class server{
         private:
-            typedef int sock_fd;
             std::vector<ServerData> _data;
-            __socket    sock;
+            std::vector<__socket> _socket_list;
             struct sockaddr_in _address;
-            sock_fd     master_socket;
             size_t      _addrlen;
             std::vector<int>    master_fds;
             request     req;
-
+            // std::vector<struct epoll_event> _event_list TODO: event list
+            struct epoll_event _event;
+            int     _poll;
         public:
             server(std::vector<ServerData> __data);
             void    init();
+            void    initial_sockets();
             char    *req_string();
             std::string readReq(int fd, size_t _size);
             ~server();
