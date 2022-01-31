@@ -32,10 +32,11 @@
             size_t     _addrlen;
         public:
             __socket();
-            __socket(struct sockaddr_in &address);
             int     init(int port, std::string host);
             void bindSock(int port, std::string interface);
+            int    listen_socket();
             int const   &getsocket() const;
+            struct sockaddr_in  getAddress();
             ~__socket();
     };
 
