@@ -3,6 +3,17 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+class response
+{
+public:
+	std::string	_statusLine;
+	std::map<std::string, std::string> _headers;
+	std::string	_body;
+public:
+	response() {}
+	~response() {}
+};
+
 class request
 {
 private:
@@ -12,10 +23,18 @@ private:
 	std::string _reqUri;
 	std::string	_httpVersion;
 	std::string	*_reqHeader;
-	std::map<std::string, std::string> 	_header;
+	std::multimap<std::string, std::string> 	_header;
 	std::string	_bodyMessage;
 	int			_statusCode;
+	std::string	_path;
+	std::string	_query;
+	std::string _port;
 	std::vector<ServerData> _data;
+	std::vector<Location>	_locations;
+	std::string				_responseStr;
+
+	int			_nbServer;
+	int			_nbLocation;
 
 public:
 	request();
@@ -31,6 +50,20 @@ public:
 	void	parseRequestLine(std::string);
 	void	parseReqHeader(std::string);
 	void	parseBody(std::string);
+	void	findServer();
+	void	findLocations();
+	void	handleRequests();
+	void	GETRequest();
+
+	std::string const & getResponse() const
+	{
+		return _responseStr;
+	}
+
+	void	setResponse(std::string & str)
+	{
+		this->_responseStr = str;
+	}
 
 	void	hundleMethod(std::string& , size_t &);
 	void	hundleUri(std::string& , size_t &);

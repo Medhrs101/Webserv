@@ -26,6 +26,10 @@
 #include <dirent.h>
 #include <cstdlib>
 
+//Med hrs includes
+#include <sys/stat.h>
+
+
 #include "Location.hpp"
 #include "ServerData.hpp"
 #include "ConfigParser.hpp"
