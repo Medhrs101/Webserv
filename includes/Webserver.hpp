@@ -1,26 +1,30 @@
 #ifndef WEBSERVER_HPP
 #define WEBSERVER_HPP
-#include "socket.hpp"
-#include "../includes/Webserv.hpp"
+// #include "socket.hpp"
+// #include "../includes/Webserv.hpp"
+#include <sys/ioctl.h>
 // #include <sys/event.h>
-
     class server{
         private:
             std::vector<ServerData> _data;
-            std::vector<__socket> _socket_list;
-            struct sockaddr_in _address;
-            size_t      _addrlen;
-            std::vector<int>    master_fds;
+            std::vector<__socket>   _socket_list;
+            struct sockaddr_in      _address;
+            size_t                  _addrlen;
+            std::vector<int>        master_fds;
             request     req;
-            // std::vector<struct epoll_event> _event_list TODO: event list
+            IOhandler   _queue;
+            std::vector<struct pollfd>  _pollfd_list;
+            int                         _fdNum;
             struct epoll_event _event;
             int     _poll;
         public:
             server(std::vector<ServerData> __data);
             void    init();
             void    initial_sockets();
+            int     pollList();
+            void    deleteS(int );
             char    *req_string();
-            std::string readReq(int fd, size_t _size);
+            std::string readReq(int fd, int *ret);
             ~server();
     };
 #endif

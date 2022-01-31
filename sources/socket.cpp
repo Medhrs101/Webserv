@@ -8,7 +8,8 @@
     }
     int     __socket::init(int port, std::string host){
         if ((_sockFD = socket(AF_INET, SOCK_STREAM,0)) < 0){
-            // std::cerr << "Error at creation :" << strerror(errno);
+            std::cerr << "Error at creation Server : "<< host << ":" << port << " < " << strerror(errno) << " > " << std::endl;
+            return -1;
             throw Socketexeption("socket Creation");
         }
         _addrlen = sizeof(_address);

@@ -6,6 +6,24 @@ request::request(/* args */)
 
 }
 
+std::pair<bool, std::map<std::string, std::string>::const_iterator> request::getHeaderOf(std::string req) const{
+	std::map<std::string, std::string>::const_iterator it;
+	if ((it = this->_header.find(req)) != this->_header.end())
+		return	std::make_pair(true, it);
+	return std::make_pair(false, it);
+};
+
+void	request::initialize(void) {
+	this->_bodyMessage = std::string();
+	this->_header.clear();
+	this->_httpVersion = std::string();
+	this->_reqLine = std::string();
+	this->_reqMethod = std::string();
+	this->_reqstr = std::string();
+	this->_reqUri = std::string();
+	this->_statusCode = int();
+	this->_reqHeader = nullptr;
+};
 request::request(std::vector<ServerData> data):_statusCode(200), _data(data)
 {
 	//NOTE:: just for the moment;

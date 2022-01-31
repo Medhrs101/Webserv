@@ -23,6 +23,10 @@ public:
 	~request();
 
 	std::string	getBody() const {return _bodyMessage;};
+	// by Youssef ( find and return if a hedear  exist by key and return its value)
+	std::pair<bool, std::map<std::string, std::string>::const_iterator> getHeaderOf(std::string req) const;
+	// bu Youssef initialize variable after im done;
+	void	initialize(void);
 	void	requestParser(std::string req);
 	void	parseRequestLine(std::string);
 	void	parseReqHeader(std::string);
@@ -34,6 +38,7 @@ public:
 
 	void	HeaderLine(std::string&, std::string & , size_t&);
 	void	headerInMap(std::string &, std::string &, std::string &);
+
 	// void	getRequestLine();
 	class ErrorException : public std::exception
 	{
@@ -49,4 +54,4 @@ public:
 };
 
 
-#endif /* REQUEST_HPP */
+#endif
