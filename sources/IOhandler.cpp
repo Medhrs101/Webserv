@@ -51,8 +51,8 @@ void    IOhandler::inputEvent(int fd, int index){
 };
 
 void    IOhandler::outputEvent(int fd, int index){
-    std::string hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\nConnection: keep-alive\n\nHello world!";
-    // std::string hello = _req.getResponse();
+    // std::string hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\nConnection: keep-alive\n\nHello world!";
+    std::string hello = _req.getResponse();
     int sen = send(fd, hello.c_str(), hello.length(), 0);
     std::cout  << " hello sent " << std::endl;
     std::cout <<"conection header "<< _req.getHeaderOf("Connection").first << std::endl;
@@ -65,10 +65,12 @@ void    IOhandler::outputEvent(int fd, int index){
 };
 
 void    IOhandler::deleteS(int index){
-    close(_pollfd_list[index].fd);
-    std::cout << "---------------- close " <<_pollfd_list[index].fd <<"\n";
-    _pollfd_list.erase(_pollfd_list.begin() + index);
-    _fdNum--;
+    if (index < _pollfd_list.size()){
+        close(_pollfd_list[index].fd);
+        std::cout << "---------------- close " <<_pollfd_list[index].fd <<"\n";
+        _pollfd_list.erase(_pollfd_list.begin() + index);
+        _fdNum--;
+    }
 };
 
 void    IOhandler::IOwatch(){
@@ -87,17 +89,17 @@ void    IOhandler::IOwatch(){
         {
             if (_pollfd_list[i].revents == 0)
                 continue ;
-             if ((_pollfd_list[i].revents & POLLERR) || (_pollfd_list[i].revents & POLLNVAL)){
+            if ((_pollfd_list[i].revents & POLLERR) || (_pollfd_list[i].revents & POLLNVAL)){
                 this->deleteS(i);
                 continue ;
             }
             fd = _pollfd_list[i].fd;
             if (_pollfd_list[i].revents & POLLIN){
-                // std::cout << "---------------- input\n";
+                // TODO: std::cout << "---------------- input\n";
                 inputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLOUT){
-                // TODO: write to fd
+                //TODO: write to fd
                 // std::cout << "---------------- output\n";
                 outputEvent(fd, i);
             }
