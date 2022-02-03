@@ -83,8 +83,6 @@
         return ret;
     };
     void    server::init(){
-        // struct kevent listning_event;
-        // struct kevent ch_event;
         int     kq;
         int     sockId;
         int     n = 0;
@@ -93,8 +91,6 @@
         std::string req_string;
         struct pollfd   evPoll;
 
-        // create kqueue
-        // kq = kqueue();
         initial_sockets();
         if (pollList() == 0)
         {
@@ -143,18 +139,6 @@
         //                     _pollfd_list[i].events = POLLIN | POLLOUT;
         //                 }
         //             }
-        //         }
-        //         if (_pollfd_list[i].revents & POLLOUT){
-        //             std::string hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
-        //             int sen = send(_pollfd_list[i].fd, hello.c_str(), hello.length(), 0);
-        //             std::cout  << " hello sent " << std::endl;
-        //             std::cout <<"conection header "<<req.getHeaderOf("Connection").first << std::endl;
-        //             if (req.getHeaderOf("Connection").first == false || (req.getHeaderOf("Connection").first == true && req.getHeaderOf("Connection").second->second == "close")){
-        //                 this->deleteS(i);
-        //                 continue;
-        //             }
-        //             _pollfd_list[i].events = POLLIN;
-        //             _pollfd_list[i].revents = 0;
         //         }
         //     }
         // }

@@ -15,7 +15,6 @@
             IOhandler   _queue;
             std::vector<struct pollfd>  _pollfd_list;
             int                         _fdNum;
-            struct epoll_event _event;
             int     _poll;
         public:
             server(std::vector<ServerData> __data);
