@@ -3,7 +3,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <sys/epoll.h>
+// #include <sys/epoll.h>
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
@@ -21,7 +21,7 @@
             const char * what () const throw (){
                 return _msg.c_str();
             }
-            virtual ~Socketexeption() {}
+            virtual ~Socketexeption() _NOEXCEPT{}
     };
     class __socket
     {

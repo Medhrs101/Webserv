@@ -51,4 +51,4 @@ void outputLogs(std::string);
 #define log std::cout <<
 #define line << std::endl
 
-#endif
+#endif /* WEBSERV_HPP */
