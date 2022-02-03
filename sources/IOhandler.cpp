@@ -20,7 +20,7 @@ void    IOhandler::set_masterFdlist(std::vector<int> &list){
 
 void    IOhandler::inputEvent(int fd, int index){
     int     new_socket;
-    int     ret = 0;
+    int     ret = index;
     std::string req_string;
     struct pollfd   evPoll;
 
@@ -51,7 +51,8 @@ void    IOhandler::inputEvent(int fd, int index){
 };
 
 void    IOhandler::outputEvent(int fd, int index){
-    std::string hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\n\nHello world!";
+    std::string hello = "HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 12\nConnection: keep-alive\n\nHello world!";
+    // std::string hello = _req.getResponse();
     int sen = send(fd, hello.c_str(), hello.length(), 0);
     std::cout  << " hello sent " << std::endl;
     std::cout <<"conection header "<< _req.getHeaderOf("Connection").first << std::endl;
@@ -65,6 +66,7 @@ void    IOhandler::outputEvent(int fd, int index){
 
 void    IOhandler::deleteS(int index){
     close(_pollfd_list[index].fd);
+    std::cout << "---------------- close " <<_pollfd_list[index].fd <<"\n";
     _pollfd_list.erase(_pollfd_list.begin() + index);
     _fdNum--;
 };
@@ -75,7 +77,7 @@ void    IOhandler::IOwatch(){
     int     fd = -1;
     while (true)
     {
-            std::cout << "im here \n";
+        std::cout << "---------------- Poll\n";
         ret = poll(&(_pollfd_list[0]), _fdNum, -1);
         if (ret < 0){
             std::cerr << "FATAL error -poll-: " << strerror(errno);
@@ -85,21 +87,29 @@ void    IOhandler::IOwatch(){
         {
             if (_pollfd_list[i].revents == 0)
                 continue ;
+             if ((_pollfd_list[i].revents & POLLERR) || (_pollfd_list[i].revents & POLLNVAL)){
+                this->deleteS(i);
+                continue ;
+            }
             fd = _pollfd_list[i].fd;
             if (_pollfd_list[i].revents & POLLIN){
+                // std::cout << "---------------- input\n";
                 inputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLOUT){
-                //TODO: write to fd
+                // TODO: write to fd
+                // std::cout << "---------------- output\n";
                 outputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLHUP){
                 //TODO: Connectio to be close;
+                // std::cout << "---------------- POLLHUB\n";
                 this->deleteS(i);
             }
         }
     }
 };
+
 IOhandler::~IOhandler(){};
 
  std::string IOhandler::readReq(int fd, int *n){
@@ -108,10 +118,8 @@ IOhandler::~IOhandler(){};
         char buff[1024] = {0};
         std::string ret;
         res = recv(fd, buff, sizeof(buff) - 1, 0);
-        // res = read(fd, buff, sizeof(buff) - 1);
-        // buff[res] = '\0';
         if (res == 0){
-            std::cout << "---------------- Close Connetion at read" << "----------------"  << std::endl;
+            std::cout << "---------------- Close Connetion at read" << i  <<"----------------"  << std::endl;
             this->deleteS(i);
             *n = 0;
         }
