@@ -48,6 +48,7 @@ request::request(std::vector<ServerData> data):_statusCode(200), _data(data)
 void    request::requestParser(std::string req)
 {
 	_reqstr = req;
+	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -64,7 +65,7 @@ void    request::requestParser(std::string req)
 	this->findServer();
 	this->findLocations();
 	this->handleRequests();
-	this->printReqData();
+	// this->printReqData();
 }
 
 void	pathCorrection(std::string & path)
@@ -97,6 +98,7 @@ void	makeResponse(response & response, request & req)
 	struct tm tm = *gmtime(&now);
 	strftime(buff, sizeof buff, "%a, %d %b %Y %H:%M:%S %Z", &tm);
 	respStr += "Date: " + std::string(buff);
+	respStr += "\r\nContent-Length: " + std::to_string(response._body.length());
 	respStr += "\r\n";
 	respStr += "\r\n";
 	respStr += response._body;
@@ -133,13 +135,16 @@ void	request::GETRequest()
 		throw ErrorException("Error in the path request");
 	}
 	if (response._body.empty() == true) {
+		std::ostringstream streambuff;
 		file.open(_path, std::ios::binary);
 		if (file.is_open()) {
-			file >> buffer;
-			while (!file.eof()) {
-				response._body += buffer;
-				file >> buffer;
-			}
+			// file >> buffer;
+			streambuff << file.rdbuf();
+			// while (!file.eof()) {
+			// 	response._body += buffer;
+			// 	file >> buffer;
+			// }
+			response._body = streambuff.str();
 			file.close();
 		} else
 			throw ErrorException("500 internal error server");
@@ -154,6 +159,7 @@ void	request::GETRequest()
 
 void	request::handleRequests()
 {
+	//TODO: allowed method
 	if (_reqMethod == "GET")
 		GETRequest();
 }	
@@ -178,19 +184,19 @@ void	request::findLocations()
 void	request::findServer()
 {
 	size_t i = this->_data.size();
-// 	std::cout << i << std::endl;
-// 	for(size_t j = 0; j < i; j++)
-// 	{
-// 		std::vector<std::string> const & v = _data[j].getNames();
-// 		_data[j].ge
-// 		std::cout << "here" << std::endl;
-// 		size_t	s = v.size();
-// 		std::cout << s << std::endl;
-// 		for (size_t i = 0; i < s; i++)
-// 		{
-// 			std::cout << v[i] << std::endl;
-// 		}
-// 	}
+	std::cout << i << std::endl;
+	for(size_t j = 0; j < i; j++)
+	{
+		std::vector<std::string> const & v = _data[j].getNames();
+		// _data[j].ge
+		std::cout << "here" << std::endl;
+		size_t	s = v.size();
+		std::cout << s << std::endl;
+		for (size_t i = 0; i < s; i++)
+		{
+			std::cout << v[i] << std::endl;
+		}
+	}
 	this->_nbServer = 0;
 }
 
