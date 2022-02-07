@@ -3,6 +3,10 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#define HTTPV1 "HTTP/1.1"
+#define SPACE " "
+#define CRLF "\r\n"
+
 class response
 {
 public:
@@ -54,6 +58,7 @@ public:
 	void	findLocations();
 	void	handleRequests();
 	void	GETRequest();
+	void	isRedirection();
 
 	std::string const & getResponse() const
 	{

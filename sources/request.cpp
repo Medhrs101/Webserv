@@ -6,7 +6,7 @@
  */
 #include "../includes/Webserv.hpp"
 #include <string>
-
+void	errorHandler(std::string	msgError, request & req);
 request::request(/* args */)
 {
 
@@ -48,7 +48,7 @@ request::request(std::vector<ServerData> data):_statusCode(200), _data(data)
 void    request::requestParser(std::string req)
 {
 	_reqstr = req;
-	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -63,7 +63,9 @@ void    request::requestParser(std::string req)
 	this->parseReqHeader(_reqstr.substr(i, j - i));
 	this->parseBody(_reqstr.substr(j, _reqLine.size() - j));
 	this->findServer();
+	std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
+	std::cout << "number of location: " << _nbLocation << std::endl;
 	this->handleRequests();
 	// this->printReqData();
 }
@@ -93,27 +95,74 @@ void	makeResponse(response & response, request & req)
 	std::string respStr;
 	char		buff[1000];
 	respStr = response._statusLine;
-	respStr += "\r\n";
+	// std::cout << respStr << std::endl;
+	respStr += CRLF;
+	// if (response._headers.find("Content-Type") == response._headers.end())
+		// respStr += "\r\nContent-Length: " + std::to_string(response._body.length());
+	for (std::map<std::string, std::string>::iterator it = response._headers.begin(); it != response._headers.end(); it++)
+	{
+		respStr += it->first;
+		respStr += ": ";
+		respStr += it->second;
+		respStr += CRLF;
+	}
+	respStr += "Server: WebServer/med&marji";
+	respStr += CRLF;
 	time_t now   = time(0);
 	struct tm tm = *gmtime(&now);
 	strftime(buff, sizeof buff, "%a, %d %b %Y %H:%M:%S %Z", &tm);
 	respStr += "Date: " + std::string(buff);
-	respStr += "\r\nContent-Length: " + std::to_string(response._body.length());
 	respStr += "\r\n";
 	respStr += "\r\n";
 	respStr += response._body;
 	respStr += "\r\n\r\n";
-	std::cout << "begin resp |" << respStr << "|end resp" << std::endl;
+	// std::cout << "begin resp |" << respStr << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
+std::string contentType (std::string path)
+{
+	std::string	extension = path.substr(path.find(".") + 1, path.length() - path.find("."));
+	if (extension == "html")
+		return "text/html";
+	else if (extension == "png" || extension == "ico")
+		return "image/png";
+	else if (extension == "mp4")
+		return "video/mp4";
+	else
+		return "text/plain";
+	// std::cout << "this is the path extension : " << extension << std::endl;
+	return extension;
+}
+
+// void	request::isRedirection(response & response)
+// {
+// 	int statusCode;
+// 	if (_locations[_nbLocation].isRedirection() == true)
+// 	{
+// 		statusCode = _locations[_nbLocation].getReturnCode();
+
+// 	}
+// }
+
 void	request::GETRequest()
 {
-	response	response;
-	struct stat	info;
-	std::ifstream file;
-	char 	buffer;
-	// forming the path either from the root int the location if it is exist or i will forming the path from the general root
+	response		response;
+	struct stat		info;
+	std::ifstream 	file;
+	std::string		returnCode = " 200 OK";
+
+	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
+		errorHandler("405 Not Allowed", *this);
+	if (_locations[_nbLocation].isRedirection() == true)
+	{
+		returnCode = std::to_string(_locations[_nbLocation].getReturnCode());
+		returnCode += " Moved Permanently";
+		response._statusLine = HTTPV1" " + returnCode;
+		std::cout << "arani hna ya l9999" << response._statusLine <<std::endl;
+		response._headers["Location"] = _locations[_nbLocation].getReturnUrl();
+		goto bitbit;
+	}
 	if (_locations[_nbLocation].getRootDir().empty())
 	{
 		_path = _data[_nbServer].getRootDir() + _path;
@@ -131,28 +180,26 @@ void	request::GETRequest()
 	}
 	else
 	{
-		std::cout << _path << std::endl;
-		throw ErrorException("Error in the path request");
+		errorHandler("404 Not Found", *this);
 	}
-	if (response._body.empty() == true) {
+	if (response._body.empty() == true)
+	{
 		std::ostringstream streambuff;
 		file.open(_path, std::ios::binary);
 		if (file.is_open()) {
-			// file >> buffer;
 			streambuff << file.rdbuf();
-			// while (!file.eof()) {
-			// 	response._body += buffer;
-			// 	file >> buffer;
-			// }
 			response._body = streambuff.str();
 			file.close();
-		} else
-			throw ErrorException("500 internal error server");
+		}
+		else
+			errorHandler("500 internal Server Error", *this);
 	}
-	response._statusLine = "HTTP/1.1";
-	response._statusLine += " 200 OK";
-	
-	makeResponse(response, *this);
+	response._statusLine = HTTPV1;
+	response._statusLine += " " + returnCode;
+	// response._headers["Content-Type"] = contentType(_path);
+	response._headers["Content-Length"] = std::to_string(response._body.length());
+
+	bitbit: makeResponse(response, *this);
 	// _locations[_nbLocation].getDefaultFile()
 	
 }
@@ -162,40 +209,46 @@ void	request::handleRequests()
 	//TODO: allowed method
 	if (_reqMethod == "GET")
 		GETRequest();
+	else
+		errorHandler("404 Bad request", *this);
 }	
 
 void	request::findLocations()
 {
 	this->_locations = _data[_nbServer].getLocations();
 	int		LocationNum  = 0;
-	size_t	priority = 0;
-
 	for (size_t i = 0; i < _locations.size(); i++)
 	{
-		std::cout << "location path: " << _locations[i].getPath() << std::endl;
-		// if (_path.find(_locations[i].getPath()) != std::string::npos &&
-		//     _locations[i].getPath().length() > priority)
-			// LocationNum = i;
+		// std::cout << "location path: " << _locations[i].getPath() << std::endl;
+		// std::cout << "_path: " << _path << std::endl;
+		if (_path.find(_locations[i].getPath()) != std::string::npos)
+			LocationNum = i;
 	}
 	_nbLocation = LocationNum;
-	// exit(0);
 }
 
 void	request::findServer()
 {
 	size_t i = this->_data.size();
 	std::cout << i << std::endl;
+	// exit(0);
 	for(size_t j = 0; j < i; j++)
 	{
-		std::vector<std::string> const & v = _data[j].getNames();
-		// _data[j].ge
-		std::cout << "here" << std::endl;
-		size_t	s = v.size();
-		std::cout << s << std::endl;
-		for (size_t i = 0; i < s; i++)
+		// std::cout << std::to_string(_data[j].getPort()) << "  |  " << _port << std::endl;
+		if (std::find(_data[j].getNames().begin(), _data[j].getNames().end(), _header.find("Host")->second) != _data[j].getNames().end() && std::to_string(_data[j].getPort()) == _port)
 		{
-			std::cout << v[i] << std::endl;
+			_nbServer = j;
+			return ;
 		}
+		// std::vector<std::string> const & v = _data[j].getNames();
+		// // _data[j].ge
+		// std::cout << "here" << std::endl;
+		// size_t	s = v.size();
+		// std::cout << s << std::endl;
+		// for (size_t i = 0; i < s; i++)
+		// {
+		// 	std::cout << v[i] << std::endl;
+		// }
 	}
 	this->_nbServer = 0;
 }
@@ -209,7 +262,7 @@ void	request::HeaderLine(std::string &reqHeader, std::string & Line,  size_t &i)
 {
 	size_t	j = reqHeader.find("\r\n", i);
 	if (j == std::string::npos)
-		throw ErrorException("Error in the Header Fieldes");
+		errorHandler("400 Bad Request", *this);
 	Line = reqHeader.substr(i, j - i);
 	i = j + 2;
 }
@@ -225,7 +278,7 @@ void	request::headerInMap(std::string & Line, std::string & key, std::string & v
 {
 	size_t	i = Line.find(":");
 	if (i == std::string::npos)
-		throw ErrorException ("Error in header fieldes");
+		errorHandler("400 Bad Request", *this);
 	key = Line.substr (0, i);
 	value = Line.substr(i + 1, Line.size() - i + 1);
 	trim(value);
@@ -250,23 +303,26 @@ void	request::parseReqHeader(std::string reqHeader)
 			break;
 	}
 	if (this->_header.count("Host") != 1)
-		throw ErrorException ("Bad request 404 Host problem");
+		errorHandler("400 Bad Request", *this);
 	else
 	{
 		std::string	hosTemp;
 		hosTemp = _header.find("Host")->second;
 		size_t	j = (hosTemp).find(':');
+		std::cout << hosTemp << std::endl;
+		int port;
 		if (j != std::string::npos)
 		{
 			(_header.find("Host")->second).erase(j, hosTemp.length() - j);
-			int port = atoi((hosTemp).substr(j + 1, (hosTemp).length() - j + 1).c_str());
-			
-			std::cout << "The port is: " << port << std::endl;
+			port = atoi((hosTemp).substr(j + 1, (hosTemp).length() - j + 1).c_str());
 			if (port == 0)
 				_port = "80";
 			else
 				_port = std::to_string(port);
 		}
+		else
+			_port = "80";
+
 	}
 }
 
@@ -284,7 +340,7 @@ void    request::hundleMethod(std::string & reqLine, size_t & i)
 {
 	i = reqLine.find_first_of(' ');
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
-		throw ErrorException("Error in the request Line 400");
+		errorHandler("400 Bad Request", *this);
 	this->_reqMethod = reqLine.substr(0, i);
 }
 
@@ -293,7 +349,7 @@ void    request::hundleUri(std::string &reqLine, size_t & j)
 	size_t i = reqLine.find_first_of(' ', j);
 	// std::cout << i << std::endl;
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
-		throw ErrorException("Error in the request Line 400");
+		errorHandler("400 Bad Request", *this);
 	this->_reqUri = reqLine.substr(j, i - j);
 	j = i;
 	i = _reqUri.find('?');
@@ -305,7 +361,7 @@ void    request::hundleHttpv(std::string & reqLine, size_t & j)
 {
 	size_t  i = reqLine.find("\r\n", j);
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
-		throw ErrorException ("Error the request Line http 400");
+		errorHandler("400 Bad Request", *this);
 	this->_httpVersion = reqLine.substr(j, i - j);
 }
 
@@ -361,7 +417,45 @@ void    request::printReqData( void )
 		std::cout << "key: |" << it->first << "|\t" << "value: |" << it->second << "|" << std::endl;
 		++it;
 	}
-	std::cout << "reqbody: |" << this->_bodyMessage << "|" << std::endl;
+	// std::cout << "reqbody: |" << this->_bodyMessage << "|" << std::endl;
+}
+
+void	errorHandler(std::string	msgError, request & req)
+{
+	response	errorRsp;
+
+	errorRsp._statusLine = HTTPV1;
+	errorRsp._statusLine += SPACE;
+	errorRsp._statusLine += msgError;
+	errorRsp._headers["Connection"] = "close";
+	errorRsp._headers["Content-Type"] = "text/html; charset=UTF-8";
+	
+	errorRsp._body = "<!DOCTYPE html>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "<html>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "<head>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "<title>";
+	errorRsp._body += msgError;
+	errorRsp._body += "</title>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "</head>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "<body>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "<h1>";
+	errorRsp._body += msgError;
+	errorRsp._body += "</h1>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "</body>";
+	errorRsp._body += CRLF;
+	errorRsp._body += "</html>";
+	errorRsp._body +=  CRLF;
+	errorRsp._body += CRLF;
+	errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
+	makeResponse(errorRsp, req);
+
 }
 
 request::~request()
