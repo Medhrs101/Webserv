@@ -58,6 +58,7 @@ public:
 	void	findLocations();
 	void	handleRequests();
 	void	GETRequest();
+	void	POSTRequest();
 	void	isRedirection();
 
 	std::string const & getResponse() const

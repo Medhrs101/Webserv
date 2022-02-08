@@ -2,7 +2,7 @@
  * @Author: Your name
  * @Date:   2022-01-21 18:25:18
  * @Last Modified by:   Your name
- * @Last Modified time: 2022-01-31 18:14:27
+ * @Last Modified time: 2022-02-08 14:34:15
  */
 #include "../includes/Webserv.hpp"
 #include <string>
@@ -145,33 +145,38 @@ std::string contentType (std::string path)
 // 	}
 // }
 
+// void	isRedirection()
+// {
+	
+// }
+
 void	request::GETRequest()
 {
 	response		response;
-	struct stat		info;
 	std::ifstream 	file;
 	std::string		returnCode = " 200 OK";
+	struct stat		info;
 
-	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
-		errorHandler("405 Not Allowed", *this);
-	if (_locations[_nbLocation].isRedirection() == true)
+	// isRedirection();
+	if (_locations[_nbLocation].isRedirection())
 	{
 		returnCode = std::to_string(_locations[_nbLocation].getReturnCode());
 		returnCode += " Moved Permanently";
 		response._statusLine = HTTPV1" " + returnCode;
-		std::cout << "arani hna ya l9999" << response._statusLine <<std::endl;
+		// std::cout << "arani hna ya l9999" << response._statusLine <<std::endl;
 		response._headers["Location"] = _locations[_nbLocation].getReturnUrl();
 		goto bitbit;
 	}
+	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
+		errorHandler("405 Not Allowed", *this);
 	if (_locations[_nbLocation].getRootDir().empty())
-	{
 		_path = _data[_nbServer].getRootDir() + _path;
-	}
 	else
 		_path = _locations[_nbLocation].getRootDir() + _path;
 	pathCorrection(_path);
 	if (stat(_path.c_str(), &info) == 0)
 	{
+		//you should check the ability to to access the the file
 		if (info.st_mode & S_IFDIR)
 		{
 			_path += "/" + _locations[_nbLocation].getDefaultFile();
@@ -204,11 +209,18 @@ void	request::GETRequest()
 	
 }
 
+void	request::POSTRequest()
+{
+	
+}
+
 void	request::handleRequests()
 {
 	//TODO: allowed method
 	if (_reqMethod == "GET")
 		GETRequest();
+	else if (_reqMethod == "POST")
+		POSTRequest();
 	else
 		errorHandler("404 Bad request", *this);
 }	
