@@ -5,3 +5,5 @@ example_ibm.c
 outputParser
 webserv_logs
 webserv.conf
+ignore_*
+public

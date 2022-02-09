@@ -69,12 +69,6 @@
             _pollfd_list.push_back(evPoll);
 
             _queue.addPollFd(evPoll);
-            // add file descriptor to queue
-            // EV_SET(&listning_event, master_socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
-            // add event to queue
-            // if (kevent(kq, &listning_event, 1, NULL, 0, NULL) < 0){
-            //     throw Socketexeption("add to queue");
-            // }
             this->_fdNum++;
             ret++;
             std::cout << "server  " << evPoll.fd << std::endl;
@@ -97,7 +91,7 @@
             std::cerr << "fatal Error : Cannot creat any vertual server";
             exit(EXIT_FAILURE);
         }
-        std::cout << "Web Server Started" << std::endl;
+        std::cout << "[>>>>>>>>> Web Server Started <<<<<<<<<]" << std::endl;
         _queue.IOwatch();
         // while (true)
         // {

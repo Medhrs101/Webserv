@@ -35,6 +35,7 @@
 #include "ConfigParser.hpp"
 #include "request.hpp"
 
+#include "queue.hpp"
 #include "socket.hpp"
 #include "IOhandler.hpp"
 #include "Webserver.hpp"

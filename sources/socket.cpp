@@ -29,6 +29,7 @@
         _address.sin_family = AF_INET;
         _address.sin_port = htons(port);
         // _address.sin_addr.s_addr = inet_addr(interface.c_str());
+        // _address.sin_addr.s_addr = inet_addr("0.0.0.0");
         _address.sin_addr.s_addr = htonl(INADDR_ANY);
         if (setsockopt(_sockFD, SOL_SOCKET, SO_REUSEADDR , &opt, sizeof(opt)) == -1)
             throw Socketexeption(strerror(errno));
