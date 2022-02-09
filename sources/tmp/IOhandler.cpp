@@ -19,27 +19,6 @@ void    IOhandler::set_masterFdlist(std::vector<int> &list){
     _fdNum = _master_fds.size();
 };
 
-void    IOhandler::addToQueue(queue elm){
-    for (size_t i = 0; i < _reqQueue.size(); i++)
-    {
-        if (_reqQueue[i].getFD() == elm.getFD()){
-            _reqQueue[i].initQueueElm(elm.getFD(), elm.getReq());
-            return ;
-        }
-    }
-    _reqQueue.push_back(elm);
-};
-
-void    IOhandler::removeQueue(int fd){
-    for (size_t i = 0; i < _reqQueue.size(); i++)
-    {
-        if (_reqQueue[i].getFD() == fd){
-            _reqQueue.erase(_reqQueue.begin() + i);
-            return ;
-        }
-    }
-};
-
 void    IOhandler::inputEvent(int fd, int index){
     int     new_socket;
     int     ret = index;
@@ -53,7 +32,7 @@ void    IOhandler::inputEvent(int fd, int index){
             throw Socketexeption("accept");
         }
         fcntl(new_socket, F_SETFL, O_NONBLOCK);
-        std::cout << "[ ---------- Accept connection from " << inet_ntoa(_address.sin_addr) << ":" << ntohs(_address.sin_port) << " ---------------- ]"  << std::endl;
+        std::cout << "new connecticon " << new_socket << "----------------"  << std::endl;
         evPoll.fd = new_socket;
         evPoll.events = POLLIN;
         evPoll.revents = 0;
@@ -62,52 +41,33 @@ void    IOhandler::inputEvent(int fd, int index){
     }
     else{
         req_string = readReq(fd, &ret);
-        std::cout << ret << std::endl;
-            exit(0);
         if (ret == 0)
             return ;
         if (ret > 0){
-            queue elm;
             _req.initialize();
             _req.requestParser(req_string);
-            elm.initQueueElm(fd, _req);
-            this->addToQueue(elm);
             _pollfd_list[index].events = POLLIN | POLLOUT;
         }
     }
 };
 
-queue   &IOhandler::operator[](int n){
-    for (int i = 0; i < _reqQueue.size(); i++)
-    {
-        if (_reqQueue[i].getFD() == n)
-            return _reqQueue[i];
-    }
-    return *(_reqQueue.end());
-}
-
 void    IOhandler::outputEvent(int fd, int index){
-    queue &current = (*this)[fd];
-
-    // current = (*this)[fd];
-    std::string hello = current.getReq().getResponse();
+    std::string hello = _req.getResponse();
     int  reqSize = hello.size();
-    int  reqSent = current.getReqSent();
-
-    if (reqSent < reqSize){
-        int sen = send(fd, hello.c_str() + reqSent, reqSize - reqSent, 0);
+    reqSize -= _outSize;
+    if (reqSize > 0){
+        int sen = send(fd, hello.c_str() + _outSize, reqSize, 0);
         if (sen == -1){
             throw Socketexeption(strerror(errno));
         }
-        current.updateReqSent(sen);
-        std::cout << current.getReqSent() << " "  << reqSize << std::endl;
-        if (reqSent < reqSize){
-            _pollfd_list[index].events = POLLOUT;
-            _pollfd_list[index].revents = 0;
-            return ;
-        }
+        _outSize += sen;
+        _pollfd_list[index].events = POLLOUT;
+        std::cout << reqSize << std::endl;
+        _pollfd_list[index].revents = 0;
+        return ;
     }
-    std::cout  << " response Sent " << std::endl;
+    std::cout  << " hello sent " << std::endl;
+    std::cout <<"conection header "<< _req.getHeaderOf("Connection").first << std::endl;
     if (_req.getHeaderOf("Connection").first == false || (_req.getHeaderOf("Connection").first == true && _req.getHeaderOf("Connection").second->second == "close")){
         this->deleteS(index);
         return;
@@ -119,11 +79,9 @@ void    IOhandler::outputEvent(int fd, int index){
 
 void    IOhandler::deleteS(int index){
     if (index < _pollfd_list.size()){
-        int fd = _pollfd_list[index].fd;
-        close(fd);
-        std::cout << "---------------- close connection ---------------- " <<_pollfd_list[index].fd <<"\n";
+        close(_pollfd_list[index].fd);
+        std::cout << "---------------- close " <<_pollfd_list[index].fd <<"\n";
         _pollfd_list.erase(_pollfd_list.begin() + index);
-        removeQueue(fd);
         _fdNum--;
     }
 };
@@ -134,8 +92,8 @@ void    IOhandler::IOwatch(){
     int     fd = -1;
     while (true)
     {
+        std::cout << "---------------- Poll\n";
         ret = poll(&(_pollfd_list[0]), _fdNum, -1);
-            std::cout << "---------------- Close Connetion at read" <<"----------------"  << std::endl;
         if (ret < 0){
             std::cerr << "FATAL error -poll-: " << strerror(errno);
         }
@@ -172,7 +130,6 @@ IOhandler::~IOhandler(){};
  std::string IOhandler::readReq(int fd, int *n){
         int res = 0;
         int i = *n;
-        *n = 0;
         char buff[1024] = {0};
         std::string ret;
         res = recv(fd, buff, sizeof(buff) - 1, 0);
@@ -186,16 +143,16 @@ IOhandler::~IOhandler(){};
             throw Socketexeption("cant read Req");
         }
         else{
+            *n = res;
             ret = buff;
-            while (res > 0)
-            {
-                *n += res;
-                if (res < 1023)
-                    break;
-                res = recv(fd, buff, sizeof(buff) - 1, 0);
-                if (res > 0)
-                    ret += buff;
-            }
+            // while (res > 0)
+            // {
+            //     if (res < 1024)
+            //         break;
+            //     res = recv(fd, buff, sizeof(buff) - 1, 0);
+            //     if (res > 0)
+            //         ret += buff;
+            // }
         }
         return ret;
     }
