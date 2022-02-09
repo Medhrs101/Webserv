@@ -211,7 +211,22 @@ void	request::GETRequest()
 
 void	request::POSTRequest()
 {
-	
+	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
+		return errorHandler("405 Not Alowed", *this);
+	std::string	ContentType = _header.find("Content-Type")->second;
+	std::cout << "Content-Type: " << ContentType << std::endl;
+	if (ContentType.find("multipart/form-data") != std::string::npos)
+	{
+		// std::cout << "***************************************************<\n" << this->_bodyMessage << ">*************************************" << std::endl;
+		// std::cout 
+	}
+	else if (ContentType.find("application/x-www-form-urlencoded") != std::string::npos)
+	{
+
+	}
+	else
+		return errorHandler("415 Unsupported Media Type", *this);
+	// exit(0);
 }
 
 void	request::handleRequests()
@@ -340,7 +355,7 @@ void	request::parseReqHeader(std::string reqHeader)
 
 void    request::parseRequestLine(std::string reqLine)
 {
-	std::cout << "reqLine: <" << reqLine << ">" << std::endl;
+	// std::cout << "reqLine: <" << reqLine << ">" << std::endl;
 	size_t i(0);
 	this->hundleMethod(reqLine, i);
 	this->hundleUri(reqLine, ++i);
@@ -429,7 +444,7 @@ void    request::printReqData( void )
 		std::cout << "key: |" << it->first << "|\t" << "value: |" << it->second << "|" << std::endl;
 		++it;
 	}
-	// std::cout << "reqbody: |" << this->_bodyMessage << "|" << std::endl;
+	std::cout << "reqbody: |" << this->_bodyMessage << "|" << std::endl;
 }
 
 void	errorHandler(std::string	msgError, request & req)
