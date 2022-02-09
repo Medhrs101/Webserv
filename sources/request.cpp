@@ -67,7 +67,7 @@ void    request::requestParser(std::string req)
 	this->findLocations();
 	std::cout << "number of location: " << _nbLocation << std::endl;
 	this->handleRequests();
-	// this->printReqData();
+	this->printReqData();
 }
 
 void	pathCorrection(std::string & path)

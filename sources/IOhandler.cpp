@@ -63,7 +63,6 @@ void    IOhandler::inputEvent(int fd, int index){
     else{
         req_string = readReq(fd, &ret);
         std::cout << ret << std::endl;
-            exit(0);
         if (ret == 0)
             return ;
         if (ret > 0){
@@ -110,6 +109,7 @@ void    IOhandler::outputEvent(int fd, int index){
     std::cout  << " response Sent " << std::endl;
     if (_req.getHeaderOf("Connection").first == false || (_req.getHeaderOf("Connection").first == true && _req.getHeaderOf("Connection").second->second == "close")){
         this->deleteS(index);
+        std::cout << "---------------- close debug ---------------- " <<_pollfd_list[index].fd <<"\n";
         return;
     }
     _pollfd_list[index].events = POLLIN;
@@ -135,7 +135,6 @@ void    IOhandler::IOwatch(){
     while (true)
     {
         ret = poll(&(_pollfd_list[0]), _fdNum, -1);
-            std::cout << "---------------- Close Connetion at read" <<"----------------"  << std::endl;
         if (ret < 0){
             std::cerr << "FATAL error -poll-: " << strerror(errno);
         }
@@ -177,7 +176,7 @@ IOhandler::~IOhandler(){};
         std::string ret;
         res = recv(fd, buff, sizeof(buff) - 1, 0);
         if (res == 0){
-            std::cout << "---------------- Close Connetion at read" << i  <<"----------------"  << std::endl;
+            std::cout << "---------------- Close Connetion at read ----------------"  << std::endl;
             this->deleteS(i);
             *n = 0;
         }
