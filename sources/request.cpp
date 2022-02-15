@@ -63,11 +63,11 @@ void    request::requestParser(std::string req)
 	this->parseReqHeader(_reqstr.substr(i, j - i));
 	this->parseBody(_reqstr.substr(j, _reqLine.size() - j));
 	this->findServer();
-	std::cout << "number of server: " << _nbServer <<std::endl;
+	// std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
-	std::cout << "number of location: " << _nbLocation << std::endl;
+	// std::cout << "number of location: " << _nbLocation << std::endl;
 	this->handleRequests();
-	this->printReqData();
+	// this->printReqData();
 }
 
 void	pathCorrection(std::string & path)
@@ -203,8 +203,12 @@ void	request::GETRequest()
 	response._statusLine += " " + returnCode;
 	// response._headers["Content-Type"] = contentType(_path);
 	response._headers["Content-Length"] = std::to_string(response._body.length());
-
-	bitbit: makeResponse(response, *this);
+	
+	bitbit:
+	if (this->_path.substr(_path.find_last_of('.') + 1) == "php"){
+		after_sgi_string(response);
+	}
+		makeResponse(response, *this);
 	// _locations[_nbLocation].getDefaultFile()
 	
 }
@@ -488,4 +492,88 @@ void	errorHandler(std::string	msgError, request & req)
 request::~request()
 {
 
+}
+
+
+void	request::after_sgi_string(response & response){
+	char	buff[1024] = {0};
+    std::string body;
+	std::string	file_path;
+    int res;
+	pid_t pid;
+    // const char *arg[] =  {"/Users/ymarji/goinfre/.brew/bin/php-cgi", NULL};
+    char **arg = (char **)malloc(sizeof(char *) * 2);
+    arg[0] = strdup("/Users/ymarji/goinfre/.brew/bin/php-cgi");
+    arg[1] = NULL;
+    int pipes[2];
+
+
+	// setenv("SERVER_SOFTWARE", "Webserver/0.0.0.0.1", 1);
+	// setenv("SERVER_NAME", "127.0.0.1", 1);
+	// setenv("GATEWAY_INTERFACE", "CGI/1.1",1);
+	// setenv("SERVER_PROTOCOL", "HTTP/1.1",1);
+	// setenv("SERVER_PORT", "80", 1);
+	// std::cout << this->_reqMethod << std::endl;
+	// std::cout << this->_path << std::endl;
+	// std::cout << this->_data[0].getRootDir() << std::endl;
+	// std::cout << this->_query << std::endl;
+
+	struct stat st;
+	setenv("REQUEST_METHOD", this->_reqMethod.c_str(), 1);
+	if (::stat(this->_path.c_str(), &st) == -1)
+		throw std::runtime_error(strerror(errno));
+	setenv("SCRIPT_FILENAME", this->_path.c_str(), 1);
+	setenv("PATH_INFO", this->_data[_nbServer].getRootDir().c_str(), 1);
+	setenv("REDIRECT_STATUS", "0", 1);
+	
+	setenv("QUERY_STRING", this->_query.c_str(), 1);
+
+
+
+    extern char **environ;
+    if (pipe(pipes) < 0)
+        exit(1);
+    pid = fork();
+    if (pid < 0) 
+        throw std::runtime_error("pid");
+    else if (pid == 0){
+        close(pipes[0]);
+        if (dup2(pipes[1], 1) < 0)
+			std::cerr << "Error : CGI crash, try again" << std::endl;
+		close(pipes[1]);
+        if (execve(arg[0], (char * const *)arg, environ) == -1){
+			std::cerr << "Error : CGI crash, try again" << std::endl;
+			exit(EXIT_FAILURE);
+		}
+    }
+    else{
+		close(pipes[1]);
+        wait(NULL);
+        while ((res = read(pipes[0], buff, sizeof(buff) - 1)) > 0){
+            if (res == -1){
+				std::cerr << "Error : CGI crash, try again" << std::endl;
+				return ;
+			}
+            body += buff;
+            bzero(buff, 1024);
+            if (res < sizeof(buff))
+                break ;
+        }
+		char *header = ::strdup(body.substr(0, body.find("\n\r")).c_str());
+		
+		char *token = ::strtok(header, "\n");
+		while (token != NULL)
+		{
+			{
+				std::string stoken = token;
+				response._headers[stoken.substr(0, stoken.find(": "))] = stoken.substr(stoken.find(":") + 1);
+				std::cout <<  stoken.substr(stoken.find(':') + 1) << std::endl;
+			}
+			token = ::strtok(NULL, "\n");
+		}
+		response._body = body.substr(body.find("\n\r") + 1);
+		response._headers["Content-Length"] = std::to_string(response._body.size());
+		close(pipes[0]);
+        // std::cout << response._body << std::endl;
+    }
 }

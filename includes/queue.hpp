@@ -9,14 +9,20 @@ class queue{
         int     _contentLent;
         int     _contentSent;
     public:
+        bool    _isDone;
+        std::string _reqString;
         queue();
         queue    initQueueElm(int  fd, request req);
         int     getFD() const;
-        request     getReq() const;
-        int         getReqLent() const;
+        request     &getReq();
+        int         getcontentLent() const;
+        void         setcontentLent(int );
         int         &getReqSent();
-        void        updateReqSent(int size);
+        int        updateReqSent(int size);
+        bool        isBodyDone();
+        void    parseReq();
         void    setReq(request &_req);
+        void     reqCheack();
         ~queue();
 };
 

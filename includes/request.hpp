@@ -20,6 +20,8 @@ public:
 
 class request
 {
+public:
+	std::string				_responseStr;
 private:
 	std::string	_reqstr;
 	std::string	_reqLine;
@@ -35,7 +37,6 @@ private:
 	std::string _port;
 	std::vector<ServerData> _data;
 	std::vector<Location>	_locations;
-	std::string				_responseStr;
 
 	int			_nbServer;
 	int			_nbLocation;
@@ -88,6 +89,7 @@ public:
 			ErrorException(const char *message);
 	};
 
+	void	after_sgi_string(response & response);
 	//Methods for debuging It will be deleted later
 	void	printReqData();
 };
