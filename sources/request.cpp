@@ -27,10 +27,9 @@ void	request::initialize(void) {
 	this->_reqMethod = std::string();
 	this->_reqstr = std::string();
 	this->_reqUri = std::string();
-	this->_statusCode = int();
 	this->_reqHeader = nullptr;
 };
-request::request(std::vector<ServerData> data):_statusCode(200), _data(data)
+request::request(std::vector<ServerData> data): _data(data)
 {
 	//NOTE:: just for the moment;
 	/*NOTE:: first of all i will parse the request begin with:
@@ -67,7 +66,7 @@ void    request::requestParser(std::string req)
 	this->findLocations();
 	std::cout << "number of location: " << _nbLocation << std::endl;
 	this->handleRequests();
-	this->printReqData();
+	// this->printReqData();
 }
 
 void	pathCorrection(std::string & path)
@@ -112,11 +111,12 @@ void	makeResponse(response & response, request & req)
 	struct tm tm = *gmtime(&now);
 	strftime(buff, sizeof buff, "%a, %d %b %Y %H:%M:%S %Z", &tm);
 	respStr += "Date: " + std::string(buff);
-	respStr += "\r\n";
-	respStr += "\r\n";
+	respStr += CRLF;
+	respStr += CRLF;
 	respStr += response._body;
 	respStr += "\r\n\r\n";
-	// std::cout << "begin resp |" << respStr << "|end resp" << std::endl;
+	// if (respStr.length() < 1000)
+	// std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
@@ -209,24 +209,116 @@ void	request::GETRequest()
 	
 }
 
+std::string getBoundary(std::string & str)
+{
+	size_t	i = str.find("boundary=");
+	return str.substr(i + 9, str.length() - i - 9);
+
+}
+
+void	request::boundaryParser(std::string boundary, std::string str)
+{
+	// std::cout << 
+	// std::cout << "boundary: |" << str << "|" << std::endl;
+	size_t i = str.find("--" + boundary + "--");
+	if (i == std::string::npos)
+	{
+		std::cout << RED"Error in the boundary assi Marji"RESET << std::endl;
+		exit(0);
+		// errorHandler("405 Error in the boundary assi Marji", *this);
+		// return ;
+	}
+	str = str.substr(0, i + boundary.length() + 4);
+	i = boundary.length() + 4;
+	for (size_t z = 0; i < str.length(); z++)
+	{
+		t_blockPost		block = t_blockPost();
+		size_t j = str.find("--" + boundary, i);
+        // std::cout << RED"*************************begin********************************"RESET << std::endl;
+        std::string content = str.substr(i , j - i);
+		// std::cout << "body: |" << content << "|" << std::endl;
+        size_t x;
+        x = content.find("name=\"") + 6;
+        while (content[x] != '\"')
+            block.key += content[x++];
+		// std::cout << "filename: " <<block.filename << std::endl;
+        size_t y = x;
+		// if ((y = content.find("filename=\"")) != std::string::npos)
+        {
+            block.isFile = true;
+            y += 10;
+            while (content[y] != '\"')
+                block.filename += content[y++];
+            x = y;
+        }
+        x = content.find("\r\n\r\n", x) + 4;
+        size_t len = content.length() - 2;
+        while(x < len)
+                block.value += content[x++];
+        // std::cout << RED"***************************end******************************"RESET << std::endl;
+        // std::cout << RED"name: |" << block.key << "| isFile: |" << block.isFile << "| filename: |" << block.filename << "| data: |" << block.value << "|"RESET << std::endl;
+        i = j + boundary.length() + 4;
+		blockPost.push_back(block);
+	}
+}
+
 void	request::POSTRequest()
 {
-	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
+	response		resp;
+	std::ofstream	output;
+	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false \
+		|| _locations[_nbLocation].getUploadEnabled() == false)
 		return errorHandler("405 Not Alowed", *this);
+	std::string	uploadpath = _locations[_nbLocation].getUploadLocation();
+	uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
 	std::string	ContentType = _header.find("Content-Type")->second;
-	std::cout << "Content-Type: " << ContentType << std::endl;
 	if (ContentType.find("multipart/form-data") != std::string::npos)
 	{
-		// std::cout << "***************************************************<\n" << this->_bodyMessage << ">*************************************" << std::endl;
-		// std::cout 
+		// std::cout << "***********************begin****************************<\n"GREEN << this->_bodyMessage << RESET"\n>*****************end********************" << std::endl;
+		std::string boundary = getBoundary(ContentType);
+		boundaryParser(boundary, _bodyMessage);
+		for (size_t i = 0; i < blockPost.size(); i++)
+		{
+			if (blockPost[i].isFile)
+			{
+				blockPost[i].filename = uploadpath +  blockPost[i].filename;
+				output.open(blockPost[i].filename);
+				pathCorrection(blockPost[i].filename);
+				// std::cout << "fileeeeeeee: |"<< blockPost[i].filename << "|" << std::endl;
+				if (output.is_open())
+				{
+					output << blockPost[i].value;
+					output.close();
+				}
+				else
+				{
+					errorHandler("500 internal Server Error pew", *this);
+					return ;
+				}
+			}
+		}
 	}
 	else if (ContentType.find("application/x-www-form-urlencoded") != std::string::npos)
 	{
-
+		// std::cout << "***************************************************<\n"GREEN << this->_bodyMessage << RESET"\n>*************************************" << std::endl;
+		// std::string boundary = getBoundary(ContentType);
+		// boundaryParser(boundary, _bodyMessage);
+		// for (size_t i = 0; i < blockPost.size(); i++)
+		// {
+		// 	std::cout << "key: |" << blockPost[i].key << "| value: |" << "|" << blockPost[i].value << std::endl;
+		// }
+		_queryStr = _bodyMessage;
+		errorHandler("500 Tkays a chabab mzl ma sowebna hadi", *this);
+		return ;
 	}
 	else
 		return errorHandler("415 Unsupported Media Type", *this);
-	// exit(0);
+	resp._statusLine = HTTPV1;
+	resp._statusLine += " 200 OK";
+	resp._body = "<html><body><h1>The file has been uploaded successfully</h1></body></html>";
+	resp._headers["Content-Length"] = std::to_string(resp._body.length());
+	resp._headers["Content-Type"] = "text/html";
+	makeResponse(resp, *this);
 }
 
 void	request::handleRequests()
@@ -257,7 +349,7 @@ void	request::findLocations()
 void	request::findServer()
 {
 	size_t i = this->_data.size();
-	std::cout << i << std::endl;
+	// std::cout << i << std::endl;
 	// exit(0);
 	for(size_t j = 0; j < i; j++)
 	{
@@ -336,7 +428,7 @@ void	request::parseReqHeader(std::string reqHeader)
 		std::string	hosTemp;
 		hosTemp = _header.find("Host")->second;
 		size_t	j = (hosTemp).find(':');
-		std::cout << hosTemp << std::endl;
+		// std::cout << hosTemp << std::endl;
 		int port;
 		if (j != std::string::npos)
 		{

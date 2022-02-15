@@ -7,6 +7,11 @@
 #define SPACE " "
 #define CRLF "\r\n"
 
+#define RESET   "\033[0m"
+#define RED     "\033[31m"      /* Red */
+#define GREEN   "\033[32m"      /* Green */
+#define YELLOW  "\033[33m"      /* Yellow */
+
 class response
 {
 public:
@@ -17,6 +22,19 @@ public:
 	response() {}
 	~response() {}
 };
+
+typedef struct	t_blockPost 
+{
+	bool 		isFile;
+	std::string key;
+	std::string filename;
+	std::string value;
+	t_blockPost()
+	{
+		
+	}
+}				s_blockPost;
+
 
 class request
 {
@@ -29,13 +47,14 @@ private:
 	std::string	*_reqHeader;
 	std::multimap<std::string, std::string> 	_header;
 	std::string	_bodyMessage;
-	int			_statusCode;
 	std::string	_path;
 	std::string	_query;
 	std::string _port;
 	std::vector<ServerData> _data;
 	std::vector<Location>	_locations;
 	std::string				_responseStr;
+	std::vector<s_blockPost>	blockPost;
+	std::string	_queryStr;
 
 	int			_nbServer;
 	int			_nbLocation;
@@ -60,6 +79,7 @@ public:
 	void	GETRequest();
 	void	POSTRequest();
 	void	isRedirection();
+	void	boundaryParser(std::string, std::string);
 
 	std::string const & getResponse() const
 	{
