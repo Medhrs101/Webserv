@@ -39,25 +39,24 @@ typedef struct	t_blockPost
 class request
 {
 private:
-	std::string	_reqstr;
-	std::string	_reqLine;
-	std::string _reqMethod;
-	std::string _reqUri;
-	std::string	_httpVersion;
-	std::string	*_reqHeader;
+	std::string									_reqstr;
+	std::string									_reqLine;
+	std::string 								_reqMethod;
+	std::string 								_reqUri;
+	std::string									_httpVersion;
+	std::string									*_reqHeader;
 	std::multimap<std::string, std::string> 	_header;
-	std::string	_bodyMessage;
-	std::string	_path;
-	std::string	_query;
-	std::string _port;
-	std::vector<ServerData> _data;
-	std::vector<Location>	_locations;
-	std::string				_responseStr;
-	std::vector<s_blockPost>	blockPost;
-	std::string	_queryStr;
-
-	int			_nbServer;
-	int			_nbLocation;
+	std::string									_bodyMessage;
+	std::string									_path;
+	std::string									_query;
+	std::string 								_port;
+	std::vector<ServerData> 					_data;
+	std::vector<Location>						_locations;
+	std::string									_responseStr;
+	std::vector<s_blockPost>					blockPost;
+	std::string									_queryStr;
+	int											_nbServer;
+	int											_nbLocation;
 
 public:
 	request();
@@ -76,8 +75,10 @@ public:
 	void	findServer();
 	void	findLocations();
 	void	handleRequests();
+
 	void	GETRequest();
 	void	POSTRequest();
+	void	DELETERequest();
 	void	isRedirection();
 	void	boundaryParser(std::string, std::string);
 

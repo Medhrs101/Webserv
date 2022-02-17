@@ -54,6 +54,9 @@ void    request::requestParser(std::string req)
 		throw ErrorException("Error in the request Line");
 	i = i + 2;
 	this->parseRequestLine(_reqstr.substr(0, i));
+	if (_reqstr[i] == '\r' && _reqstr[i + 1] == '\n')
+		errorHandler("400 Bad request", *this); return;
+	std::cout << "7m,aaaaaaaaaer" << std::endl;
 	size_t	j = _reqstr.find("\r\n\r\n");
 	// std::cout << j << std::endl;
 	if (j == std::string::npos)
@@ -66,7 +69,7 @@ void    request::requestParser(std::string req)
 	this->findLocations();
 	std::cout << "number of location: " << _nbLocation << std::endl;
 	this->handleRequests();
-	// this->printReqData();
+	this->printReqData();
 }
 
 void	pathCorrection(std::string & path)
@@ -74,7 +77,6 @@ void	pathCorrection(std::string & path)
 	for (size_t i = 0; i + 1 < path.size(); i++)
 		if (path[i] == '/' && path[i + 1] == '/')
 			path.erase(i, 1);
-	
 }
 
 // bool	isDirectory(std::string  path)
@@ -155,20 +157,20 @@ void	request::GETRequest()
 	response		response;
 	std::ifstream 	file;
 	std::string		returnCode = " 200 OK";
+	std::string		errorMessage;
 	struct stat		info;
 
-	// isRedirection();
+
+	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
+		errorMessage = "405 Not Allowed"; goto error;
 	if (_locations[_nbLocation].isRedirection())
 	{
 		returnCode = std::to_string(_locations[_nbLocation].getReturnCode());
 		returnCode += " Moved Permanently";
 		response._statusLine = HTTPV1" " + returnCode;
-		// std::cout << "arani hna ya l9999" << response._statusLine <<std::endl;
 		response._headers["Location"] = _locations[_nbLocation].getReturnUrl();
 		goto bitbit;
 	}
-	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
-		errorHandler("405 Not Allowed", *this);
 	if (_locations[_nbLocation].getRootDir().empty())
 		_path = _data[_nbServer].getRootDir() + _path;
 	else
@@ -176,7 +178,6 @@ void	request::GETRequest()
 	pathCorrection(_path);
 	if (stat(_path.c_str(), &info) == 0)
 	{
-		//you should check the ability to to access the the file
 		if (info.st_mode & S_IFDIR)
 		{
 			_path += "/" + _locations[_nbLocation].getDefaultFile();
@@ -184,9 +185,7 @@ void	request::GETRequest()
 		}
 	}
 	else
-	{
-		errorHandler("404 Not Found", *this);
-	}
+		errorMessage = "404 Not Found"; goto error;
 	if (response._body.empty() == true)
 	{
 		std::ostringstream streambuff;
@@ -197,7 +196,7 @@ void	request::GETRequest()
 			file.close();
 		}
 		else
-			errorHandler("500 internal Server Error", *this);
+			errorMessage = "500 internal Server Error"; goto error;
 	}
 	response._statusLine = HTTPV1;
 	response._statusLine += " " + returnCode;
@@ -205,6 +204,7 @@ void	request::GETRequest()
 	response._headers["Content-Length"] = std::to_string(response._body.length());
 
 	bitbit: makeResponse(response, *this);
+	error: errorHandler(errorMessage, *this);
 	// _locations[_nbLocation].getDefaultFile()
 	
 }
@@ -308,14 +308,69 @@ void	request::POSTRequest()
 		// 	std::cout << "key: |" << blockPost[i].key << "| value: |" << "|" << blockPost[i].value << std::endl;
 		// }
 		_queryStr = _bodyMessage;
-		errorHandler("500 Tkays a chabab mzl ma sowebna hadi", *this);
-		return ;
+		// errorHandler("500 Tkays a chabab mzl ma sowebna hadi", *this);
+		// return ;
 	}
 	else
 		return errorHandler("415 Unsupported Media Type", *this);
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
 	resp._body = "<html><body><h1>The file has been uploaded successfully</h1></body></html>";
+	resp._headers["Content-Length"] = std::to_string(resp._body.length());
+	resp._headers["Content-Type"] = "text/html";
+	makeResponse(resp, *this);
+}
+
+// void	pathFix(std::string path)
+// {
+// 	for (size_t i = path.length(); i > 0; i--)
+// 	{
+		
+// 	}
+	
+// }
+
+void	request::DELETERequest()
+{
+	response	resp;
+	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
+	{
+		errorHandler ("405 Not Allowed", *this);
+		return ;
+	}
+	if (_locations[_nbLocation].getRootDir().empty())
+		_path = _data[_nbServer].getRootDir() + _path;
+	else
+		_path = _locations[_nbLocation].getRootDir() + _path;
+	pathCorrection(_path);
+	struct stat info;
+	if (stat(_path.c_str(), &info) == 0)
+	{
+		std::cout << "path: |" << _path << std::endl;
+		std::cout << "path: |" << _data[_nbServer].getRootDir() << std::endl;
+		// pathFix(_path);
+		if (_path.find(_data[_nbServer].getRootDir()) != std::string::npos)
+		{
+			if (remove(_path.c_str()) != 0)
+			{
+				errorHandler("400 Unable to delete the file", *this);
+				return ;
+			}
+		}
+		else
+		{
+			errorHandler("400 ma7chemtich Removi file mn root lah yhidk", *this);
+			return;
+		}
+	}
+	else
+	{
+		errorHandler("404 Not Found", *this);
+		return ;
+	}
+	resp._statusLine = HTTPV1;
+	resp._statusLine += " 200 OK";
+	resp._body = "<html><body><h1>The file was removed successfully</h1></body></html>";
 	resp._headers["Content-Length"] = std::to_string(resp._body.length());
 	resp._headers["Content-Type"] = "text/html";
 	makeResponse(resp, *this);
@@ -328,6 +383,8 @@ void	request::handleRequests()
 		GETRequest();
 	else if (_reqMethod == "POST")
 		POSTRequest();
+	else if (_reqMethod == "DELETE")
+		DELETERequest();
 	else
 		errorHandler("404 Bad request", *this);
 }	
@@ -472,8 +529,15 @@ void    request::hundleUri(std::string &reqLine, size_t & j)
 	this->_reqUri = reqLine.substr(j, i - j);
 	j = i;
 	i = _reqUri.find('?');
-	this->_query = _reqUri.substr(i + 1, _reqUri.length() - i + 1);
-	this->_path = _reqUri.substr(0, i);
+	if (i != std::string::npos)
+	{
+		this->_query = _reqUri.substr(i + 1, _reqUri.length() - i + 1);
+		this->_path = _reqUri.substr(0, i);
+	}
+	else
+	{
+		this->_query = "";
+	}
 }
 
 void    request::hundleHttpv(std::string & reqLine, size_t & j)
