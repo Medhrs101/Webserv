@@ -1,0 +1,19 @@
+POST /test.php HTTP/1.1
+User-Agent: PostmanRuntime/7.25.0
+Accept: */*
+Postman-Token: bea33427-52f3-4ce0-8564-143972735cb0
+Host: 127.0.0.1
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Content-Type: multipart/form-data; boundary=--------------------------530415689553079771115822
+Content-Length: 276
+
+----------------------------530415689553079771115822
+Content-Disposition: form-data; name="kname"
+
+hello
+----------------------------530415689553079771115822
+Content-Disposition: form-data; name="fname"
+
+mojahid
+----------------------------530415689553079771115822--
