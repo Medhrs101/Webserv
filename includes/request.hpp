@@ -86,6 +86,10 @@ public:
 	{
 		return _responseStr;
 	}
+	std::string const & getQueryString() const
+	{
+		return _queryStr;
+	}
 
 	void	setResponse(std::string & str)
 	{

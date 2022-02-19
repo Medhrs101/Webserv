@@ -47,15 +47,15 @@ request::request(std::vector<ServerData> data): _data(data)
 void    request::requestParser(std::string req)
 {
 	_reqstr = req;
-	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
 		throw ErrorException("Error in the request Line");
 	i = i + 2;
 	this->parseRequestLine(_reqstr.substr(0, i));
-	// if (_reqstr[i] == '\r' && _reqstr[i + 1] == '\n')
-	// 	errorHandler("400 Bad request", *this); return;
+	// if (_reqstr[i] == '\r' && _reqstr[i + 1] == '\n' )
+	// 	return errorHandler("400 Bad request", *this); return;
 	// std::cout << "7m,aaaaaaaaaer" << std::endl;
 	size_t	j = _reqstr.find("\r\n\r\n");
 	// std::cout << j << std::endl;
@@ -70,14 +70,17 @@ void    request::requestParser(std::string req)
 	std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
 	std::cout << "number of location: " << _nbLocation << std::endl;
-	// std::cout << RED << "Client body size should respect: |" << _data[_nbServer].getClientBodySize() << "|" << RESET << std::endl;
-	// if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
-	// {
-	// 	errorHandler ("413 Payload Too Large", *this); return;
-	// }
+	std::cout << RED << "Client body size should respect: |" << _bodyMessage.length() << "|" << RESET << std::endl;
+	if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
+	{
+		errorHandler("413 Payload Too Large", *this); return ;
+	}
 	if (handleRequests())
+	{
+		// this->printReqData();
 		return ;
-	this->printReqData();
+	}
+	// this->printReqData();
 }
 
 void	pathCorrection(std::string & path)
@@ -126,7 +129,7 @@ void	makeResponse(response & response, request & req)
 	respStr += response._body;
 	respStr += "\r\n\r\n";
 	// if (respStr.length() < 1000)
-	std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
+	// std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
@@ -179,7 +182,6 @@ bool	request::GETRequest()
 	}
 	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
 		return errorHandler("405 Not Allowed", *this);
-	std::cout << RED << "PATH: " << RESET << std::endl;
 	if (_locations[_nbLocation].getRootDir().empty())
 		_path = _data[_nbServer].getRootDir() + _path;
 	else
@@ -253,7 +255,7 @@ void	request::boundaryParser(std::string boundary, std::string str)
             block.key += content[x++];
 		// std::cout << "filename: " <<block.filename << std::endl;
         size_t y = x;
-		// if ((y = content.find("filename=\"")) != std::string::npos)
+		if ((y = content.find("filename=\"")) != std::string::npos)
         {
             block.isFile = true;
             y += 10;
@@ -276,6 +278,9 @@ bool	request::POSTRequest()
 {
 	response		resp;
 	std::ofstream	output;
+
+	blockPost.clear();
+	_queryStr.clear();
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false \
 		|| _locations[_nbLocation].getUploadEnabled() == false)
 		return errorHandler("405 Not Alowed", *this);
@@ -301,10 +306,7 @@ bool	request::POSTRequest()
 					output.close();
 				}
 				else
-				{
-					errorHandler("500 internal Server Error pew", *this);
-					return ;
-				}
+					return errorHandler("500 internal Server Error pew", *this);
 			}
 		}
 	}
@@ -323,12 +325,14 @@ bool	request::POSTRequest()
 	}
 	else
 		return errorHandler("415 Unsupported Media Type", *this);
+	
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
 	resp._body = "<html><body><h1>The file has been uploaded successfully</h1></body></html>";
 	resp._headers["Content-Length"] = std::to_string(resp._body.length());
 	resp._headers["Content-Type"] = "text/html";
 	makeResponse(resp, *this);
+	return true;
 }
 
 // void	pathFix(std::string path)
@@ -344,10 +348,7 @@ bool	request::DELETERequest()
 {
 	response	resp;
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
-	{
-		errorHandler ("405 Not Allowed", *this);
-		return ;
-	}
+		return errorHandler ("405 Not Allowed", *this);
 	if (_locations[_nbLocation].getRootDir().empty())
 		_path = _data[_nbServer].getRootDir() + _path;
 	else
@@ -362,28 +363,21 @@ bool	request::DELETERequest()
 		if (_path.find(_data[_nbServer].getRootDir()) != std::string::npos)
 		{
 			if (remove(_path.c_str()) != 0)
-			{
-				errorHandler("400 Unable to delete the file", *this);
-				return ;
-			}
+				return errorHandler("400 Unable to delete the file", *this);
 		}
 		else
-		{
-			errorHandler("400 ma7chemtich Removi file mn root lah yhidk", *this);
-			return;
-		}
+			return errorHandler("400 ma7chemtich Removi file mn root lah yhidk", *this);
+			
 	}
 	else
-	{
-		errorHandler("404 Not Found", *this);
-		return ;
-	}
+		return errorHandler("404 Not Found", *this);
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
 	resp._body = "<html><body><h1>The file was removed successfully</h1></body></html>";
 	resp._headers["Content-Length"] = std::to_string(resp._body.length());
 	resp._headers["Content-Type"] = "text/html";
 	makeResponse(resp, *this);
+	return true;
 }
 
 bool	request::handleRequests()
@@ -391,12 +385,12 @@ bool	request::handleRequests()
 	//TODO: allowed method
 	if (_reqMethod == "GET")
 		return GETRequest();
-	// else if (_reqMethod == "POST")
-	// 	POSTRequest();
-	// else if (_reqMethod == "DELETE")
-	// 	DELETERequest();
-	// else
-	// 	errorHandler("404 Bad request", *this);
+	else if (_reqMethod == "POST")
+		return POSTRequest();
+	else if (_reqMethod == "DELETE")
+		return DELETERequest();
+	else
+		return errorHandler("404 Bad request", *this);
 }	
 
 void	request::findLocations()
@@ -540,9 +534,7 @@ void    request::hundleUri(std::string &reqLine, size_t & j)
 	j = i;
 	i = _reqUri.find('?');
 	if (i != std::string::npos)
-	{
 		this->_query = _reqUri.substr(i + 1, _reqUri.length() - i + 1);
-	}
 	else
 		this->_query = "";
 	this->_path = _reqUri.substr(0, i);
