@@ -54,12 +54,9 @@ private:
 	std::string _port;
 	std::vector<ServerData> _data;
 	std::vector<Location>	_locations;
-<<<<<<< HEAD
-=======
-	std::string				_responseStr;
+	// std::string				_responseStr;
 	std::vector<s_blockPost>	blockPost;
 	std::string	_queryStr;
->>>>>>> dev
 
 	int			_nbServer;
 	int			_nbLocation;
@@ -67,6 +64,30 @@ private:
 public:
 	request();
 	request(std::vector<ServerData>);
+	request(const request &req){
+		*this =  req;
+	};
+	request &operator=(const request & req){
+		if (this != &req){
+			_reqstr		= req._reqstr;
+			_reqLine	= req._reqLine;
+			_reqMethod	= req._reqMethod;
+			_reqUri		= req._reqUri;
+			_httpVersion= req._httpVersion;
+			_header		= req._header;
+			_bodyMessage= req._bodyMessage;
+			_path		= req._path;
+			_query		= req._query;
+			_port		= req._port;
+			_data		= req._data;
+			_locations	= req._locations;
+			blockPost	= req.blockPost;
+			_queryStr	= req._queryStr;
+			_nbServer	= req._nbServer;
+			_nbLocation	= req._nbLocation;
+		}
+		return *this;
+	}
 	~request();
 
 	std::string	getBody() const {return _bodyMessage;};
@@ -114,6 +135,7 @@ public:
 	};
 
 	void	after_sgi_string(response & response);
+	std::string	getPostData();
 	//Methods for debuging It will be deleted later
 	void	printReqData();
 };

@@ -4,23 +4,23 @@
 
 class IOhandler{
     private:
+        std::vector<ServerData>     _data;
 		bool						_close;
         std::vector<int>            _master_fds;
         std::vector<struct pollfd>  _pollfd_list;
         int                         _fdNum;
         struct sockaddr_in         _address;
         size_t                      _addrlen;
-        request                     &_req;
         std::vector<queue>          _reqQueue;
         size_t                      _outSize;
         bool                        _busy;
     public:
         // IOhandler();
-        IOhandler(request &req);
+        IOhandler(std::vector<ServerData>     data);
         void    addPollFd(struct pollfd &pollfd);
         void    set_pollList(std::vector<struct pollfd> &pollList);
         void    set_masterFdlist(std::vector<int> &list);
-        void    newElem();
+        void    newElem(int fd);
         void    addToQueue(queue elm);
         void    removeQueue(int fd);
         void    IOwatch();
