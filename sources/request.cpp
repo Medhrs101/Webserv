@@ -2,11 +2,11 @@
  * @Author: Your name
  * @Date:   2022-01-21 18:25:18
  * @Last Modified by:   Your name
- * @Last Modified time: 2022-02-08 14:34:15
+ * @Last Modified time: 2022-02-19 15:09:31
  */
 #include "../includes/Webserv.hpp"
 #include <string>
-void	errorHandler(std::string	msgError, request & req);
+bool	errorHandler(std::string	msgError, request & req);
 request::request(/* args */)
 {
 
@@ -47,16 +47,16 @@ request::request(std::vector<ServerData> data): _data(data)
 void    request::requestParser(std::string req)
 {
 	_reqstr = req;
-	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
 		throw ErrorException("Error in the request Line");
 	i = i + 2;
 	this->parseRequestLine(_reqstr.substr(0, i));
-	if (_reqstr[i] == '\r' && _reqstr[i + 1] == '\n')
-		errorHandler("400 Bad request", *this); return;
-	std::cout << "7m,aaaaaaaaaer" << std::endl;
+	// if (_reqstr[i] == '\r' && _reqstr[i + 1] == '\n')
+	// 	errorHandler("400 Bad request", *this); return;
+	// std::cout << "7m,aaaaaaaaaer" << std::endl;
 	size_t	j = _reqstr.find("\r\n\r\n");
 	// std::cout << j << std::endl;
 	if (j == std::string::npos)
@@ -64,11 +64,19 @@ void    request::requestParser(std::string req)
 	j = j + 4;
 	this->parseReqHeader(_reqstr.substr(i, j - i));
 	this->parseBody(_reqstr.substr(j, _reqLine.size() - j));
+
+	
 	this->findServer();
 	std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
 	std::cout << "number of location: " << _nbLocation << std::endl;
-	this->handleRequests();
+	// std::cout << RED << "Client body size should respect: |" << _data[_nbServer].getClientBodySize() << "|" << RESET << std::endl;
+	// if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
+	// {
+	// 	errorHandler ("413 Payload Too Large", *this); return;
+	// }
+	if (handleRequests())
+		return ;
 	this->printReqData();
 }
 
@@ -96,7 +104,7 @@ void	makeResponse(response & response, request & req)
 	std::string respStr;
 	char		buff[1000];
 	respStr = response._statusLine;
-	// std::cout << respStr << std::endl;
+	std::cout << respStr << std::endl;
 	respStr += CRLF;
 	// if (response._headers.find("Content-Type") == response._headers.end())
 		// respStr += "\r\nContent-Length: " + std::to_string(response._body.length());
@@ -118,7 +126,7 @@ void	makeResponse(response & response, request & req)
 	respStr += response._body;
 	respStr += "\r\n\r\n";
 	// if (respStr.length() < 1000)
-	// std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
+	std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
@@ -152,7 +160,7 @@ std::string contentType (std::string path)
 	
 // }
 
-void	request::GETRequest()
+bool	request::GETRequest()
 {
 	response		response;
 	std::ifstream 	file;
@@ -160,17 +168,18 @@ void	request::GETRequest()
 	std::string		errorMessage;
 	struct stat		info;
 
-
-	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
-		errorMessage = "405 Not Allowed"; goto error;
+	// std::cout << "path: | " << _path << std::endl;
 	if (_locations[_nbLocation].isRedirection())
 	{
 		returnCode = std::to_string(_locations[_nbLocation].getReturnCode());
 		returnCode += " Moved Permanently";
 		response._statusLine = HTTPV1" " + returnCode;
 		response._headers["Location"] = _locations[_nbLocation].getReturnUrl();
-		goto bitbit;
+			goto bitbit;
 	}
+	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
+		return errorHandler("405 Not Allowed", *this);
+	std::cout << RED << "PATH: " << RESET << std::endl;
 	if (_locations[_nbLocation].getRootDir().empty())
 		_path = _data[_nbServer].getRootDir() + _path;
 	else
@@ -185,7 +194,7 @@ void	request::GETRequest()
 		}
 	}
 	else
-		errorMessage = "404 Not Found"; goto error;
+		return errorHandler("404 Not Found", *this);
 	if (response._body.empty() == true)
 	{
 		std::ostringstream streambuff;
@@ -196,7 +205,7 @@ void	request::GETRequest()
 			file.close();
 		}
 		else
-			errorMessage = "500 internal Server Error"; goto error;
+			return errorHandler("500 internal Server Error", *this);
 	}
 	response._statusLine = HTTPV1;
 	response._statusLine += " " + returnCode;
@@ -204,9 +213,10 @@ void	request::GETRequest()
 	response._headers["Content-Length"] = std::to_string(response._body.length());
 
 	bitbit: makeResponse(response, *this);
-	error: errorHandler(errorMessage, *this);
+	// if (errorMessage != "")
+	// 	error: errorHandler(errorMessage, *this);
 	// _locations[_nbLocation].getDefaultFile()
-	
+	return true;
 }
 
 std::string getBoundary(std::string & str)
@@ -223,7 +233,7 @@ void	request::boundaryParser(std::string boundary, std::string str)
 	size_t i = str.find("--" + boundary + "--");
 	if (i == std::string::npos)
 	{
-		std::cout << RED"Error in the boundary assi Marji"RESET << std::endl;
+		std::cout << RED"Error in the boundary assi Marji" << RESET << std::endl;
 		exit(0);
 		// errorHandler("405 Error in the boundary assi Marji", *this);
 		// return ;
@@ -262,7 +272,7 @@ void	request::boundaryParser(std::string boundary, std::string str)
 	}
 }
 
-void	request::POSTRequest()
+bool	request::POSTRequest()
 {
 	response		resp;
 	std::ofstream	output;
@@ -330,7 +340,7 @@ void	request::POSTRequest()
 	
 // }
 
-void	request::DELETERequest()
+bool	request::DELETERequest()
 {
 	response	resp;
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
@@ -376,17 +386,17 @@ void	request::DELETERequest()
 	makeResponse(resp, *this);
 }
 
-void	request::handleRequests()
+bool	request::handleRequests()
 {
 	//TODO: allowed method
 	if (_reqMethod == "GET")
-		GETRequest();
-	else if (_reqMethod == "POST")
-		POSTRequest();
-	else if (_reqMethod == "DELETE")
-		DELETERequest();
-	else
-		errorHandler("404 Bad request", *this);
+		return GETRequest();
+	// else if (_reqMethod == "POST")
+	// 	POSTRequest();
+	// else if (_reqMethod == "DELETE")
+	// 	DELETERequest();
+	// else
+	// 	errorHandler("404 Bad request", *this);
 }	
 
 void	request::findLocations()
@@ -532,12 +542,10 @@ void    request::hundleUri(std::string &reqLine, size_t & j)
 	if (i != std::string::npos)
 	{
 		this->_query = _reqUri.substr(i + 1, _reqUri.length() - i + 1);
-		this->_path = _reqUri.substr(0, i);
 	}
 	else
-	{
 		this->_query = "";
-	}
+	this->_path = _reqUri.substr(0, i);
 }
 
 void    request::hundleHttpv(std::string & reqLine, size_t & j)
@@ -603,7 +611,7 @@ void    request::printReqData( void )
 	std::cout << "reqbody: |" << this->_bodyMessage << "|" << std::endl;
 }
 
-void	errorHandler(std::string	msgError, request & req)
+bool	errorHandler(std::string	msgError, request & req)
 {
 	response	errorRsp;
 
@@ -638,6 +646,7 @@ void	errorHandler(std::string	msgError, request & req)
 	errorRsp._body += CRLF;
 	errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
 	makeResponse(errorRsp, req);
+	return false;
 
 }
 

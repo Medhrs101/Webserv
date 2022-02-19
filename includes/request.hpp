@@ -74,11 +74,11 @@ public:
 	void	parseBody(std::string);
 	void	findServer();
 	void	findLocations();
-	void	handleRequests();
+	bool	handleRequests();
 
-	void	GETRequest();
-	void	POSTRequest();
-	void	DELETERequest();
+	bool	GETRequest();
+	bool	POSTRequest();
+	bool	DELETERequest();
 	void	isRedirection();
 	void	boundaryParser(std::string, std::string);
 
