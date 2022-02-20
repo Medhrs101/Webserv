@@ -47,7 +47,7 @@ request::request(std::vector<ServerData> data): _data(data)
 void    request::requestParser(std::string req)
 {
 	_reqstr = req;
-	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -69,6 +69,13 @@ void    request::requestParser(std::string req)
 	this->findServer();
 	std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
+	// if (_locations[_nbLocation].isCGI())
+	// {
+	// 	_pathcgi = _path;
+	// 	_path = _path.substr(0, _path.find_last_of("/") + 1);
+	// 	std::cout << "PATH: ||" << _path << std::endl;
+	// 	findLocations();
+	// }
 	std::cout << "number of location: " << _nbLocation << std::endl;
 	std::cout << RED << "Client body size should respect: |" << _bodyMessage.length() << "|" << RESET << std::endl;
 	if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
@@ -187,6 +194,7 @@ bool	request::GETRequest()
 	else
 		_path = _locations[_nbLocation].getRootDir() + _path;
 	pathCorrection(_path);
+	std::cout << "PATH: |" << _path << std::endl;
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		if (info.st_mode & S_IFDIR)
@@ -278,15 +286,26 @@ bool	request::POSTRequest()
 {
 	response		resp;
 	std::ofstream	output;
-
+	std::string		pathTemp;
+	struct stat info;
 	blockPost.clear();
 	_queryStr.clear();
+	if (stat(_path.c_str(), &info) != 0)
+		return errorHandler ("404 Not Found", *this);
+	if (_locations[_nbLocation].isCGI())
+	{
+		pathTemp = _path;
+		_path = pathTemp.substr(0, _path.find_last_of("/") + 1);
+		std::cout << "PATH: ||" << _path << std::endl;
+		findLocations();
+	}
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false \
 		|| _locations[_nbLocation].getUploadEnabled() == false)
 		return errorHandler("405 Not Alowed", *this);
 	std::string	uploadpath = _locations[_nbLocation].getUploadLocation();
 	uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
 	std::string	ContentType = _header.find("Content-Type")->second;
+	std::cout << "uploadPath: ||" << uploadpath << std::endl;
 	if (ContentType.find("multipart/form-data") != std::string::npos)
 	{
 		// std::cout << "***********************begin****************************<\n"GREEN << this->_bodyMessage << RESET"\n>*****************end********************" << std::endl;
@@ -325,7 +344,7 @@ bool	request::POSTRequest()
 	}
 	else
 		return errorHandler("415 Unsupported Media Type", *this);
-	
+	_path = pathTemp;
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
 	resp._body = "<html><body><h1>The file has been uploaded successfully</h1></body></html>";
