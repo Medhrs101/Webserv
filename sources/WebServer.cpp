@@ -12,8 +12,11 @@
             if (_socket_list[i].init(_data[i].getPort(), _data[i].getHost()) == -1)
                 continue ;
             if (_socket_list[i].listen_socket() < 0){
-                std::cerr << " Error : skiping server -listen- " << _data[i].getHost() << ":" << _data[i].getPort() << std::endl;
+                std::cerr <<  RED << " Error : skiping server -listen- " << _data[i].getHost() << ":" << _data[i].getPort() << RESET <<  std::endl;
                 shutdown(_socket_list[i].getsocket(), SHUT_RDWR);
+            }
+            else{
+                std::cout <<  CYN << "LISTENING ON  " << _data[i].getHost() << _data[i].getPort() << std::endl;
             }
         }
     };
@@ -37,7 +40,6 @@
             _queue.addPollFd(evPoll);
             this->_fdNum++;
             ret++;
-            std::cout << "server  " << evPoll.fd << std::endl;
         }
         _queue.set_masterFdlist(master_fds);
         return ret;
@@ -51,13 +53,13 @@
         std::string req_string;
         struct pollfd   evPoll;
 
+        std::cout << GREEN << "[>>>>>>>>> Web Server Started <<<<<<<<<]" << RESET << std::endl;
         initial_sockets();
         if (pollList() == 0)
         {
-            std::cerr << "fatal Error : Cannot creat any vertual server";
+            std::cerr << RED << "fatal Error : Cannot creat any vertual server" << RESET << std::endl;
             exit(EXIT_FAILURE);
         }
-        std::cout << "[>>>>>>>>> Web Server Started <<<<<<<<<]" << std::endl;
         _queue.IOwatch();
         // while (true)
         // {
