@@ -69,9 +69,8 @@ public:
 	// bu Youssef initialize variable after im done;
 	void	initialize(void);
 	void	requestParser(std::string req);
-	void	parseRequestLine(std::string);
-	void	parseReqHeader(std::string);
-	void	parseBody(std::string);
+	std::string	parseRequestLine(std::string);
+	std::string	parseBody(std::string);
 	void	findServer();
 	void	findLocations();
 	bool	handleRequests();
@@ -96,12 +95,13 @@ public:
 		this->_responseStr = str;
 	}
 
-	void	hundleMethod(std::string& , size_t &);
-	void	hundleUri(std::string& , size_t &);
-	void	hundleHttpv(std::string& , size_t &);
+	std::string	hundleMethod(std::string& , size_t &);
+	std::string	hundleUri(std::string& , size_t &);
+	std::string	hundleHttpv(std::string& , size_t &);
 
-	void	HeaderLine(std::string&, std::string & , size_t&);
-	void	headerInMap(std::string &, std::string &, std::string &);
+	std::string	HeaderLine(std::string&, std::string & , size_t&);
+	std::string	headerInMap(std::string &, std::string &, std::string &);
+	std::string		parseReqHeader(std::string);
 
 	// void	getRequestLine();
 	class ErrorException : public std::exception

@@ -46,42 +46,46 @@ request::request(std::vector<ServerData> data): _data(data)
 
 void    request::requestParser(std::string req)
 {
+	std::string	ret;
 	_reqstr = req;
 	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
-		throw ErrorException("Error in the request Line");
+	{
+		errorHandler("400 Bad Request", *this);
+		return ;
+	}
 	i = i + 2;
-	this->parseRequestLine(_reqstr.substr(0, i));
-	// if (_reqstr[i] == '\r' && _reqstr[i + 1] == '\n' )
-	// 	return errorHandler("400 Bad request", *this); return;
-	// std::cout << "7m,aaaaaaaaaer" << std::endl;
+	if ((ret = parseRequestLine(_reqstr.substr(0, i))) != "OK")
+	{
+		errorHandler (ret, *this);
+		return;
+	}
 	size_t	j = _reqstr.find("\r\n\r\n");
 	// std::cout << j << std::endl;
 	if (j == std::string::npos)
-		throw ErrorException("Error in the Header Fieldes");
+	{
+		errorHandler("400 Bad Request", *this);
+		return ;
+	}
 	j = j + 4;
-	this->parseReqHeader(_reqstr.substr(i, j - i));
-	this->parseBody(_reqstr.substr(j, _reqLine.size() - j));
+	if ((ret = parseReqHeader(_reqstr.substr(i, j - i))) != "OK")
+	{
+		errorHandler (ret, *this);
+		return;
+	}
+	// std::cout << RED << "Client body size should respect: |" << _bodyMessage.length() << "|" << RESET << std::endl;
+	if ((ret = parseBody(_reqstr.substr(j, _reqLine.size() - j))) != "OK")
+	{
+		errorHandler (ret, *this);
+		return;
+	}
 
-	
 	this->findServer();
 	std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
-	// if (_locations[_nbLocation].isCGI())
-	// {
-	// 	_pathcgi = _path;
-	// 	_path = _path.substr(0, _path.find_last_of("/") + 1);
-	// 	std::cout << "PATH: ||" << _path << std::endl;
-	// 	findLocations();
-	// }
 	std::cout << "number of location: " << _nbLocation << std::endl;
-	std::cout << RED << "Client body size should respect: |" << _bodyMessage.length() << "|" << RESET << std::endl;
-	if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
-	{
-		errorHandler("413 Payload Too Large", *this); return ;
-	}
 	if (handleRequests())
 	{
 		// this->printReqData();
@@ -114,7 +118,7 @@ void	makeResponse(response & response, request & req)
 	std::string respStr;
 	char		buff[1000];
 	respStr = response._statusLine;
-	std::cout << respStr << std::endl;
+	// std::cout << respStr << std::endl;
 	respStr += CRLF;
 	// if (response._headers.find("Content-Type") == response._headers.end())
 		// respStr += "\r\nContent-Length: " + std::to_string(response._body.length());
@@ -452,19 +456,16 @@ void	request::findServer()
 	this->_nbServer = 0;
 }
 
-void	request::parseBody(std::string	reqBody)
+std::string	request::parseBody(std::string	reqBody)
 {
 	this->_bodyMessage = reqBody;
+	if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
+	{
+		return ("413 Payload Too Large");
+	}
+	return ("OK");
 }
 
-void	request::HeaderLine(std::string &reqHeader, std::string & Line,  size_t &i)
-{
-	size_t	j = reqHeader.find("\r\n", i);
-	if (j == std::string::npos)
-		errorHandler("400 Bad Request", *this);
-	Line = reqHeader.substr(i, j - i);
-	i = j + 2;
-}
 
 void	trim(std::string &str)
 {
@@ -473,28 +474,44 @@ void	trim(std::string &str)
 	while (!str.empty() && isspace(str.back()))
 		str.erase(str.size() - 1, 1);
 }
-void	request::headerInMap(std::string & Line, std::string & key, std::string & value)
+
+std::string	request::HeaderLine(std::string &reqHeader, std::string & Line,  size_t &i)
+{
+	size_t	j = reqHeader.find("\r\n", i);
+	if (j == std::string::npos)
+		return ("400 Bad Request");
+	Line = reqHeader.substr(i, j - i);
+	i = j + 2;
+	return "OK";
+}
+
+std::string	request::headerInMap(std::string & Line, std::string & key, std::string & value)
 {
 	size_t	i = Line.find(":");
 	if (i == std::string::npos)
-		errorHandler("400 Bad Request", *this);
+		return ("400 Bad Request");
 	key = Line.substr (0, i);
 	value = Line.substr(i + 1, Line.size() - i + 1);
 	trim(value);
+	return "OK";
 }
 
 
-void	request::parseReqHeader(std::string reqHeader)
+std::string	request::parseReqHeader(std::string reqHeader)
 {
 	// std::cout << "Header fields: |" << reqHeader << "|" << std::endl;
 	std::string	Line;
 	std::string key;
 	std::string value;
+	std::string ret;
+
 	size_t i(0);
 	while (1)
 	{
-		HeaderLine(reqHeader, Line, i);
-		headerInMap(Line, key, value);
+		if ((ret = HeaderLine(reqHeader, Line, i)) != "OK")
+			return ret;
+		if ((ret = headerInMap(Line, key, value)) != "OK")
+			return ret;
 		// this->_header[key] = value;
 		_header.insert(std::pair<std::string, std::string>(key, value));
 		// std::cout << "key: |" << key << "|" <<  value << "|" << std::endl;
@@ -502,7 +519,7 @@ void	request::parseReqHeader(std::string reqHeader)
 			break;
 	}
 	if (this->_header.count("Host") != 1)
-		errorHandler("400 Bad Request", *this);
+		return ("400 Bad Request");
 	else
 	{
 		std::string	hosTemp;
@@ -521,34 +538,41 @@ void	request::parseReqHeader(std::string reqHeader)
 		}
 		else
 			_port = "80";
-
 	}
+	return "OK";
 }
 
-void    request::parseRequestLine(std::string reqLine)
+std::string    request::parseRequestLine(std::string reqLine)
 {
 	// std::cout << "reqLine: <" << reqLine << ">" << std::endl;
 	size_t i(0);
-	this->hundleMethod(reqLine, i);
-	this->hundleUri(reqLine, ++i);
-	this->hundleHttpv(reqLine, ++i);
+	std::string ret;
+	if ((ret = hundleMethod(reqLine, i)) != "OK")
+		return ret;
+	if ((ret = hundleUri(reqLine, ++i)) != "OK")
+		return ret;
+	if ((hundleHttpv(reqLine, ++i)) != "OK")
+		return ret;
+	return "OK";
 	/*NOTE: After getting all values of the request Line you should verificate it carefully*/
 }
 
-void    request::hundleMethod(std::string & reqLine, size_t & i)
+std::string    request::hundleMethod(std::string & reqLine, size_t & i)
 {
 	i = reqLine.find_first_of(' ');
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
-		errorHandler("400 Bad Request", *this);
+		return ("400 Bad Request");
 	this->_reqMethod = reqLine.substr(0, i);
+	return "OK";
 }
 
-void    request::hundleUri(std::string &reqLine, size_t & j)
+
+std::string    request::hundleUri(std::string &reqLine, size_t & j)
 {
 	size_t i = reqLine.find_first_of(' ', j);
 	// std::cout << i << std::endl;
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
-		errorHandler("400 Bad Request", *this);
+		return ("400 Bad Request");
 	this->_reqUri = reqLine.substr(j, i - j);
 	j = i;
 	i = _reqUri.find('?');
@@ -557,14 +581,16 @@ void    request::hundleUri(std::string &reqLine, size_t & j)
 	else
 		this->_query = "";
 	this->_path = _reqUri.substr(0, i);
+	return "OK";
 }
 
-void    request::hundleHttpv(std::string & reqLine, size_t & j)
+std::string    request::hundleHttpv(std::string & reqLine, size_t & j)
 {
 	size_t  i = reqLine.find("\r\n", j);
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
-		errorHandler("400 Bad Request", *this);
+		return ("400 Bad Request");
 	this->_httpVersion = reqLine.substr(j, i - j);
+	return "OK";
 }
 
 // void	request::getRequestLine()
