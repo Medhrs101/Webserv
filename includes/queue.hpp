@@ -8,15 +8,29 @@ class queue{
         request _req;
         int     _contentLent;
         int     _contentSent;
+        size_t     _contentRead;
+        std::string _resString;
     public:
-        queue();
+        bool    _isDone;
+        std::string _reqString;
+        queue(std::vector<ServerData>);
         queue    initQueueElm(int  fd, request req);
         int     getFD() const;
-        request     getReq() const;
-        int         getReqLent() const;
+        void     setFD(int fd);
+        request     &getReq();
+        int         getcontentLent() const;
+        size_t         getcontentRead() const;
+        void         setcontentLent(int );
+        void         setcontentRead(size_t );
         int         &getReqSent();
-        void        updateReqSent(int size);
+        const std::string &getResponse() const;
+        int        updateReqSent(int size);
+        bool        isBodyDone();
+        void    parseReq();
         void    setReq(request &_req);
+        void     reqCheack();
+
+        void    setcontentSent(int size);
         ~queue();
 };
 

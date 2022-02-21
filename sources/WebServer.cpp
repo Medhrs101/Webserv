@@ -1,44 +1,10 @@
 #include "../includes/Webserv.hpp"
 
-    server::server(std::vector<ServerData> __data):_fdNum(0), _data(__data), req(__data), _queue(req)
+    server::server(std::vector<ServerData> __data):_fdNum(0), _data(__data), req(__data), _queue(_data)
     {
         _addrlen = sizeof(_address);
     }
 
-    std::string server::readReq(int fd, int *n){
-        int res = 0;
-        int i = *n;
-        char buff[1024] = {0};
-        std::string ret;
-        res = recv(fd, buff, sizeof(buff) - 1, 0);
-        // res = read(fd, buff, sizeof(buff) - 1);
-        // buff[res] = '\0';
-        if (res == 0){
-            std::cout << "---------------- Close Connetion at read" << "----------------"  << std::endl;
-            this->deleteS(i);
-                    // close(_pollfd_list[i].fd);
-                    // _pollfd_list.erase(_pollfd_list.begin() + i);
-                    // _fdNum--;
-            *n = 0;
-        }
-        else if (res < 0){
-            *n = -1;
-            throw Socketexeption("cant read Req");
-        }
-        else{
-            *n = res;
-            ret = buff;
-            // while (res > 0)
-            // {
-            //     if (res < 1024)
-            //         break;
-            //     res = recv(fd, buff, sizeof(buff) - 1, 0);
-            //     if (res > 0)
-            //         ret += buff;
-            // }
-        }
-        return ret;
-    }
 
     void    server::initial_sockets(){
         for(int i = 0; i < _data.size();i++){

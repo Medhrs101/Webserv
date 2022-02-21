@@ -28,6 +28,7 @@ void	request::initialize(void) {
 	this->_reqstr = std::string();
 	this->_reqUri = std::string();
 	this->_reqHeader = nullptr;
+	this->_header.clear();
 };
 request::request(std::vector<ServerData> data): _data(data)
 {
@@ -83,7 +84,7 @@ void    request::requestParser(std::string req)
 	}
 
 	this->findServer();
-	std::cout << "number of server: " << _nbServer <<std::endl;
+	// std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
 	std::cout << "number of location: " << _nbLocation << std::endl;
 	if (handleRequests())
@@ -225,10 +226,12 @@ bool	request::GETRequest()
 	response._statusLine += " " + returnCode;
 	// response._headers["Content-Type"] = contentType(_path);
 	response._headers["Content-Length"] = std::to_string(response._body.length());
-
-	bitbit: makeResponse(response, *this);
-	// if (errorMessage != "")
-	// 	error: errorHandler(errorMessage, *this);
+	
+	bitbit:
+	if (this->_path.substr(_path.find_last_of('.') + 1) == "php" || this->_path.substr(_path.find_last_of('.') + 1) == "py"){
+		after_sgi_string(response);
+	}
+		makeResponse(response, *this);
 	// _locations[_nbLocation].getDefaultFile()
 	return true;
 }
@@ -690,4 +693,120 @@ bool	errorHandler(std::string	msgError, request & req)
 request::~request()
 {
 
+}
+
+std::string	request::getPostData(){
+	std::string query;
+
+	for(int i = 0; blockPost.size(); i++){
+		if (blockPost[i].isFile){
+			query += blockPost[i].key + "=" + blockPost[i].filename;
+		}
+		else{
+			query = blockPost[i].key + "=" + blockPost[i].filename;
+		}
+		if (i + 1 != blockPost.size())
+			query.append("&");
+	}
+	return query;
+}
+
+void	request::after_sgi_string(response & response){
+    std::string body;
+	std::string	data;
+	char	buff[1024] = {0};
+    int res;
+	pid_t pid;
+    // const char *arg[] =  {"/Users/ymarji/goinfre/.brew/bin/php-cgi", NULL};
+    // char **arg = (char **)malloc(sizeof(char *) * 2);
+    // arg[0] = strdup("/Users/ymarji/goinfre/.brew/bin/php-cgi");
+    // arg[1] = NULL;
+    int pipes[2];
+	std::string ext = this->_path.substr(_path.find_last_of('.'));
+
+	std::vector<const char *> args;
+	for (int i = 0; i < this->_locations.size(); i++){
+		if (this->_locations[i].isCGI()){
+			if (this->_locations[i].getPath() == ext){
+				args.push_back(this->_locations[i].getFastCgiPass().c_str());
+				if (ext == ".py")
+					args.push_back(this->_path.c_str());
+				args.push_back(NULL);
+				break ;
+			}
+		}
+	}
+	int i = 0;
+	// while (args[i])
+	// {
+	// 	std::cout << args[i] << std::endl;
+	// 	i++;
+	// }
+	
+	setenv("SERVER_SOFTWARE", "WebServer/med&marji", 1);
+	setenv("GATEWAY_INTERFACE", "CGI/1.1",1);
+	setenv("SERVER_PROTOCOL", "HTTP/1.1",1);
+	setenv("REQUEST_METHOD", this->_reqMethod.c_str(), 1);
+	setenv("SCRIPT_FILENAME", this->_path.c_str(), 1);
+	setenv("PATH_INFO", this->_data[_nbServer].getRootDir().c_str(), 1);
+	setenv("SERVER_PORT", std::to_string(this->_data[_nbServer].getPort()).c_str(), 1);
+	setenv("CONTENT_TYPE", "application/x-www-form-urlencoded", 1);
+	setenv("REDIRECT_STATUS", "0", 1);
+	if (this->_reqMethod == "GET"){
+		setenv("QUERY_STRING", this->_query.c_str(), 1);
+	}
+	else if (this->_reqMethod == "POST"){
+		data = getPostData();
+		setenv("CONTENT_LENGTH", std::to_string(data.length()).c_str() , 1);
+	}
+
+    extern char **environ;
+    if (pipe(pipes) < 0)
+        exit(1);
+    pid = fork();
+    if (pid < 0) 
+        throw std::runtime_error("pid");
+    else if (pid == 0){
+        close(pipes[0]);
+        if (dup2(pipes[1], 1) < 0){
+			std::cerr << "Error : CGI crash, try again -dup2-" << std::endl;
+		}
+		close(pipes[1]);
+        if (execve(args[0], const_cast<char *const *>(&args[0]), environ) == -1){
+			std::cerr << "Error : CGI crash, try again -execve-" << std::endl;
+			throw std::runtime_error(strerror(errno));
+			exit(EXIT_FAILURE);
+		}
+    }
+    else{
+		close(pipes[1]);
+        wait(NULL);
+        while ((res = read(pipes[0], buff, sizeof(buff) - 1)) > 0){
+            if (res == -1){
+				std::cerr << "Error : CGI crash, try again -read-" << std::endl;
+				return ;
+			}
+            body.append(buff, res);
+			buff[res] = '\0';
+            bzero(buff, 1024);
+            if (res < sizeof(buff))
+                break ;
+        }
+        std::cout << "  |" << body  << "|  " << std::endl;
+		char *header = ::strdup(body.substr(0, body.find("\n\r")).c_str());
+		char *token = ::strtok(header, "\n");
+		while (token != NULL)
+		{
+			{
+				std::string stoken = token;
+				std::string key = stoken.substr(0, stoken.find(":"));
+				std::string value = stoken.substr(stoken.find(":") + 1);
+				response._headers[key] = value.substr(0, value.find_first_of('\r'));
+			}
+			token = ::strtok(NULL, "\n");
+		}
+		response._body = body.substr(body.find("\r\n\r\n") + 4);
+		response._headers["Content-Length"] = std::to_string(response._body.size());
+		close(pipes[0]); 
+    }
 }

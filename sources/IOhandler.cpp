@@ -2,7 +2,7 @@
 
 // IOhandler::IOhandler():_fdNum(0){};
 
-IOhandler::IOhandler(request &req):_fdNum(0), _req(req){
+IOhandler::IOhandler(std::vector<ServerData>  data):_fdNum(0),_data(data) {
         _addrlen = sizeof(_address);
         _outSize = 0;
 };
@@ -22,14 +22,20 @@ void    IOhandler::set_masterFdlist(std::vector<int> &list){
 void    IOhandler::addToQueue(queue elm){
     for (size_t i = 0; i < _reqQueue.size(); i++)
     {
-        if (_reqQueue[i].getFD() == elm.getFD()){
+        if (_reqQueue[i].getFD() == elm.getFD() && _reqQueue[i]._isDone){
+            _reqQueue[i].getReq().initialize();
             _reqQueue[i].initQueueElm(elm.getFD(), elm.getReq());
             return ;
         }
     }
+    std::cout << "add new elemnt" << std::endl;
     _reqQueue.push_back(elm);
 };
 
+void    IOhandler::newElem(int fd){
+    this->_reqQueue.push_back(queue(_data));
+    this->_reqQueue[_reqQueue.size() - 1].setFD(fd);
+}
 void    IOhandler::removeQueue(int fd){
     for (size_t i = 0; i < _reqQueue.size(); i++)
     {
@@ -39,6 +45,25 @@ void    IOhandler::removeQueue(int fd){
         }
     }
 };
+bool   isReqDone(std::string req){
+    std::string Content_Type;
+    bool        boundary;
+    std::string boundaryString;
+
+    size_t i = 0;
+    i = req.find("Content-Type");
+    if (i != std::string::npos){
+        i = req.find(':', i);
+        Content_Type = req.substr(i, req.find("\r\n", i));
+        i = Content_Type.find("boundary");
+        if (i != std::string::npos){
+            boundaryString = Content_Type.substr(Content_Type.find("=", i));
+            std::cout << "<<<<<<<<<<<<<<<<<" <<  boundaryString <<std::endl;
+        }
+        return true;
+    }
+    return true;
+}
 
 void    IOhandler::inputEvent(int fd, int index){
     int     new_socket;
@@ -58,63 +83,77 @@ void    IOhandler::inputEvent(int fd, int index){
         evPoll.events = POLLIN;
         evPoll.revents = 0;
         _pollfd_list.push_back(evPoll);
+        this->newElem(new_socket);
         _fdNum++;
     }
     else{
         req_string = readReq(fd, &ret);
-        std::cout << ret << std::endl;
-        if (ret == 0)
-            return ;
         if (ret > 0){
-            queue elm;
-            _req.initialize();
-            _req.requestParser(req_string);
-            elm.initQueueElm(fd, _req);
-            this->addToQueue(elm);
+            if (req_string[0] != '\r' || req_string.length()){
+                (*this)[fd]->setcontentRead(ret);
+                if ((*this)[fd] == this->_reqQueue.end()){
+                    (*this)[fd]->_reqString.append(req_string);
+                }else{
+                    if ((*this)[fd]->_isDone){
+                        (*this)[fd]->_isDone = false;
+                        (*this)[fd]->getReq().initialize();
+                        (*this)[fd]->setcontentSent(0);
+                        (*this)[fd]->setcontentRead(0);
+                        (*this)[fd]->_reqString.clear();
+                    }
+                    (*this)[fd]->_reqString.append(req_string);
+                }
+            }
             _pollfd_list[index].events = POLLIN | POLLOUT;
         }
     }
-};
+}
 
-queue   &IOhandler::operator[](int n){
+std::vector<queue>::iterator   IOhandler::operator[](int n){
     for (int i = 0; i < _reqQueue.size(); i++)
     {
         if (_reqQueue[i].getFD() == n)
-            return _reqQueue[i];
+            return _reqQueue.begin() + i;
     }
-    return *(_reqQueue.end());
+    return _reqQueue.end();
 }
 
 void    IOhandler::outputEvent(int fd, int index){
-    queue &current = (*this)[fd];
+    std::vector<queue>::iterator it = (*this)[fd];
+    queue &current = *it;
 
-    // current = (*this)[fd];
-    std::string hello = current.getReq().getResponse();
-    int  reqSize = hello.size();
-    int  reqSent = current.getReqSent();
+    std::ofstream file("out.txt");
+    file << current._reqString;
+    // system("clear");
 
-    if (reqSent < reqSize){
+    current.reqCheack();
+    std::cout << "---- done in " << std::boolalpha  << current._isDone << std::endl;
+    if (current._isDone){
+        current.parseReq();
+        const std::string hello = current.getResponse();
+        int  reqSize = hello.size();
+        int  reqSent = current.getReqSent();
         int sen = send(fd, hello.c_str() + reqSent, reqSize - reqSent, 0);
-        if (sen == -1){
-            throw Socketexeption(strerror(errno));
-        }
-        current.updateReqSent(sen);
-        std::cout << current.getReqSent() << " "  << reqSize << std::endl;
         if (reqSent < reqSize){
-            _pollfd_list[index].events = POLLOUT;
-            _pollfd_list[index].revents = 0;
-            return ;
+            if (sen == -1){
+                throw Socketexeption(strerror(errno));
+            }
+            reqSent = current.updateReqSent(sen);
+            if (reqSent < reqSize){
+                _pollfd_list[index].events = POLLOUT;
+                _pollfd_list[index].revents = 0;
+                return ;
+            }
         }
-    }
-    std::cout  << " response Sent " << std::endl;
-    if (_req.getHeaderOf("Connection").first == false || (_req.getHeaderOf("Connection").first == true && _req.getHeaderOf("Connection").second->second == "close")){
-        this->deleteS(index);
-        std::cout << "---------------- close debug ---------------- " <<_pollfd_list[index].fd <<"\n";
-        return;
+        std::cout <<" |> response sent <|" << std::endl;
+        if (current.getReq().getHeaderOf("Connection").first == false || (current.getReq().getHeaderOf("Connection").first == true && current.getReq().getHeaderOf("Connection").second->second == "close")){
+            this->deleteS(index);
+            std::cout << "---------------- close debug ---------------- " <<_pollfd_list[index].fd <<"\n";
+            return;
+        }
     }
     _pollfd_list[index].events = POLLIN;
     _pollfd_list[index].revents = 0;
-    _outSize = 0;
 };
 
 void    IOhandler::deleteS(int index){
@@ -149,12 +188,12 @@ void    IOhandler::IOwatch(){
             }
             fd = _pollfd_list[i].fd;
             if (_pollfd_list[i].revents & POLLIN){
-                // TODO: std::cout << "---------------- input\n";
+                TODO: std::cout << "---------------- input\n";
                 inputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLOUT){
                 //TODO: write to fd
-                // std::cout << "---------------- output\n";
+                std::cout << "---------------- output\n";
                 outputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLHUP){
@@ -172,9 +211,12 @@ IOhandler::~IOhandler(){};
         int res = 0;
         int i = *n;
         *n = 0;
+        int temp;
         char buff[1024] = {0};
+        bzero(buff,1024);
         std::string ret;
         res = recv(fd, buff, sizeof(buff) - 1, 0);
+        std::cout << "---------------- read ----------------  " << res << std::endl;
         if (res == 0){
             std::cout << "---------------- Close Connetion at read ----------------"  << std::endl;
             this->deleteS(i);
@@ -182,19 +224,26 @@ IOhandler::~IOhandler(){};
         }
         else if (res < 0){
             *n = -1;
-            throw Socketexeption("cant read Req");
+            throw Socketexeption(strerror(errno));
         }
         else{
-            ret = buff;
+            ret.append(buff, res);
             while (res > 0)
             {
                 *n += res;
+                temp += res;
                 if (res < 1023)
                     break;
                 res = recv(fd, buff, sizeof(buff) - 1, 0);
-                if (res > 0)
-                    ret += buff;
+                if (res < 0)
+                    throw Socketexeption(strerror(errno));
+                // buff[res] = '\0';
+                if (res > 0){
+                    ret.append(buff, res);
+                }
+                bzero(buff,1024);
             }
+            std::cout << " ---------------- read ----------------  " << *n << std::endl;
         }
         return ret;
     }
