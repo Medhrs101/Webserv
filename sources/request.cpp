@@ -6,7 +6,6 @@
  */
 #include "../includes/Webserv.hpp"
 #include <string>
-bool	errorHandler(std::string	msgError, request & req);
 request::request(/* args */)
 {
 
@@ -54,41 +53,42 @@ void    request::requestParser(std::string req)
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
 	{
-		errorHandler("400 Bad Request", *this);
+		errorHandler("400 Bad Request");
 		return ;
 	}
 	i = i + 2;
 	if ((ret = parseRequestLine(_reqstr.substr(0, i))) != "OK")
 	{
-		errorHandler (ret, *this);
+		errorHandler (ret);
 		return;
 	}
 	size_t	j = _reqstr.find("\r\n\r\n");
 	// std::cout << j << std::endl;
 	if (j == std::string::npos)
 	{
-		errorHandler("400 Bad Request", *this);
+		errorHandler("400 Bad Request");
 		return ;
 	}
 	j = j + 4;
 	if ((ret = parseReqHeader(_reqstr.substr(i, j - i))) != "OK")
 	{
-		errorHandler (ret, *this);
+		errorHandler (ret);
 		return;
 	}
 	// std::cout << RED << "Client body size should respect: |" << _bodyMessage.length() << "|" << RESET << std::endl;
-	if ((ret = parseBody(_reqstr.substr(j, _reqLine.size() - j))) != "OK")
-	{
-		errorHandler (ret, *this);
-		return;
-	}
 
 	this->findServer();
 	// std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
 	std::cout << "number of location: " << _nbLocation << std::endl;
+	if ((ret = parseBody(_reqstr.substr(j, _reqLine.size() - j))) != "OK")
+	{
+		errorHandler (ret);
+		return;
+	}
 	if (handleRequests())
 	{
+		// std::cout << RED << "ATTENTION*********there is a seg-fault********" << RESET << std::endl;
 		// this->printReqData();
 		return ;
 	}
@@ -140,8 +140,8 @@ void	makeResponse(response & response, request & req)
 	respStr += CRLF;
 	respStr += response._body;
 	respStr += "\r\n\r\n";
-	// if (respStr.length() < 1000)
-	// std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
+	if (respStr.length() < 1000)
+	std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
@@ -193,7 +193,7 @@ bool	request::GETRequest()
 			goto bitbit;
 	}
 	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
-		return errorHandler("405 Not Allowed", *this);
+		return errorHandler("405 Not Allowed");
 	if (_locations[_nbLocation].getRootDir().empty())
 		_path = _data[_nbServer].getRootDir() + _path;
 	else
@@ -202,6 +202,8 @@ bool	request::GETRequest()
 	std::cout << "PATH: |" << _path << std::endl;
 	if (stat(_path.c_str(), &info) == 0)
 	{
+		if (access(_path.c_str(), R_OK))
+			return errorHandler("403 Forbidden");
 		if (info.st_mode & S_IFDIR)
 		{
 			_path += "/" + _locations[_nbLocation].getDefaultFile();
@@ -209,7 +211,7 @@ bool	request::GETRequest()
 		}
 	}
 	else
-		return errorHandler("404 Not Found", *this);
+		return errorHandler("404 Not Found");
 	if (response._body.empty() == true)
 	{
 		std::ostringstream streambuff;
@@ -220,12 +222,16 @@ bool	request::GETRequest()
 			file.close();
 		}
 		else
-			return errorHandler("500 internal Server Error", *this);
+			return errorHandler("500 internal Server Error");
 	}
 	response._statusLine = HTTPV1;
 	response._statusLine += " " + returnCode;
 	// response._headers["Content-Type"] = contentType(_path);
 	response._headers["Content-Length"] = std::to_string(response._body.length());
+	if (_header.count("Connection") == 0 || _header.find("Connection")->second == "closed")
+		response._headers["Connection"] = "closed";
+	else
+		response._headers["Connection"] = "keep-alive"; 
 	
 	bitbit:
 	if (this->_path.substr(_path.find_last_of('.') + 1) == "php" || this->_path.substr(_path.find_last_of('.') + 1) == "py"){
@@ -252,7 +258,7 @@ void	request::boundaryParser(std::string boundary, std::string str)
 	{
 		std::cout << RED"Error in the boundary assi Marji" << RESET << std::endl;
 		exit(0);
-		// errorHandler("405 Error in the boundary assi Marji", *this);
+		// errorHandler("405 Error in the boundary assi Marji");
 		// return ;
 	}
 	str = str.substr(0, i + boundary.length() + 4);
@@ -297,22 +303,31 @@ bool	request::POSTRequest()
 	struct stat info;
 	blockPost.clear();
 	_queryStr.clear();
-	if (stat(_path.c_str(), &info) != 0)
-		return errorHandler ("404 Not Found", *this);
+
+	if (_locations[_nbLocation].getRootDir().empty())
+		_path = _data[_nbServer].getRootDir() + _path;
+	else
+		_path = _locations[_nbLocation].getRootDir() + _path;
+	if (stat(_path.c_str(), &info) == 0)
+	{
+		if (access(_path.c_str(), R_OK))
+			return errorHandler("403 Forbidden");
+	}
+	else
+		return errorHandler ("404 Not Found");
 	if (_locations[_nbLocation].isCGI())
 	{
 		pathTemp = _path;
 		_path = pathTemp.substr(0, _path.find_last_of("/") + 1);
-		std::cout << "PATH: ||" << _path << std::endl;
 		findLocations();
 	}
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false \
 		|| _locations[_nbLocation].getUploadEnabled() == false)
-		return errorHandler("405 Not Alowed", *this);
+		return errorHandler("405 Not Alowed");
 	std::string	uploadpath = _locations[_nbLocation].getUploadLocation();
 	uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
 	std::string	ContentType = _header.find("Content-Type")->second;
-	std::cout << "uploadPath: ||" << uploadpath << std::endl;
+	// std::cout << "uploadPath: ||" << uploadpath << std::endl;
 	if (ContentType.find("multipart/form-data") != std::string::npos)
 	{
 		// std::cout << "***********************begin****************************<\n"GREEN << this->_bodyMessage << RESET"\n>*****************end********************" << std::endl;
@@ -332,7 +347,7 @@ bool	request::POSTRequest()
 					output.close();
 				}
 				else
-					return errorHandler("500 internal Server Error pew", *this);
+					return errorHandler("500 internal Server Error pew");
 			}
 		}
 	}
@@ -346,17 +361,21 @@ bool	request::POSTRequest()
 		// 	std::cout << "key: |" << blockPost[i].key << "| value: |" << "|" << blockPost[i].value << std::endl;
 		// }
 		_queryStr = _bodyMessage;
-		// errorHandler("500 Tkays a chabab mzl ma sowebna hadi", *this);
+		// errorHandler("500 Tkays a chabab mzl ma sowebna hadi");
 		// return ;
 	}
 	else
-		return errorHandler("415 Unsupported Media Type", *this);
+		return errorHandler("415 Unsupported Media Type");
 	_path = pathTemp;
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
-	resp._body = "<html><body><h1>The file has been uploaded successfully</h1></body></html>";
+	resp._body = "<html><body><h1>The Media has been uploaded successfully</h1></body></html>";
 	resp._headers["Content-Length"] = std::to_string(resp._body.length());
 	resp._headers["Content-Type"] = "text/html";
+	if (_header.count("Connection") == 0 || _header.find("Connection")->second == "closed")
+	resp._headers["Connection"] = "closed";
+	else
+	resp._headers["Connection"] = "keep-alive"; 
 	makeResponse(resp, *this);
 	return true;
 }
@@ -373,30 +392,33 @@ bool	request::POSTRequest()
 bool	request::DELETERequest()
 {
 	response	resp;
+	struct stat info;
+	
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
-		return errorHandler ("405 Not Allowed", *this);
+		return errorHandler ("405 Not Allowed");
 	if (_locations[_nbLocation].getRootDir().empty())
 		_path = _data[_nbServer].getRootDir() + _path;
 	else
 		_path = _locations[_nbLocation].getRootDir() + _path;
 	pathCorrection(_path);
-	struct stat info;
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		std::cout << "path: |" << _path << std::endl;
 		std::cout << "path: |" << _data[_nbServer].getRootDir() << std::endl;
 		// pathFix(_path);
+		if (_path.find(".."))
+			return errorHandler("404 Not Found");
 		if (_path.find(_data[_nbServer].getRootDir()) != std::string::npos)
 		{
 			if (remove(_path.c_str()) != 0)
-				return errorHandler("400 Unable to delete the file", *this);
+				return errorHandler("500 Internal Server Error");
 		}
 		else
-			return errorHandler("400 ma7chemtich Removi file mn root lah yhidk", *this);
+			return errorHandler("400 you can only remove file from root");
 			
 	}
 	else
-		return errorHandler("404 Not Found", *this);
+		return errorHandler("404 Not Found");
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
 	resp._body = "<html><body><h1>The file was removed successfully</h1></body></html>";
@@ -416,7 +438,7 @@ bool	request::handleRequests()
 	else if (_reqMethod == "DELETE")
 		return DELETERequest();
 	else
-		return errorHandler("404 Bad request", *this);
+		return errorHandler("404 Bad request");
 }	
 
 void	request::findLocations()
@@ -462,6 +484,7 @@ void	request::findServer()
 std::string	request::parseBody(std::string	reqBody)
 {
 	this->_bodyMessage = reqBody;
+	// std::cout << "hello" << std::endl;
 	if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
 	{
 		return ("413 Payload Too Large");
@@ -592,7 +615,9 @@ std::string    request::hundleHttpv(std::string & reqLine, size_t & j)
 	size_t  i = reqLine.find("\r\n", j);
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
 		return ("400 Bad Request");
-	this->_httpVersion = reqLine.substr(j, i - j);
+	_httpVersion = reqLine.substr(j, i - j);
+	if (_httpVersion != HTTPV1)
+		return ("400 Bad Request");
 	return "OK";
 }
 
@@ -651,16 +676,8 @@ void    request::printReqData( void )
 	std::cout << "reqbody: |" << this->_bodyMessage << "|" << std::endl;
 }
 
-bool	errorHandler(std::string	msgError, request & req)
+void	fillError(response & errorRsp, std::string & msgError)
 {
-	response	errorRsp;
-
-	errorRsp._statusLine = HTTPV1;
-	errorRsp._statusLine += SPACE;
-	errorRsp._statusLine += msgError;
-	errorRsp._headers["Connection"] = "close";
-	errorRsp._headers["Content-Type"] = "text/html; charset=UTF-8";
-	
 	errorRsp._body = "<!DOCTYPE html>";
 	errorRsp._body += CRLF;
 	errorRsp._body += "<html>";
@@ -685,9 +702,44 @@ bool	errorHandler(std::string	msgError, request & req)
 	errorRsp._body +=  CRLF;
 	errorRsp._body += CRLF;
 	errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
-	makeResponse(errorRsp, req);
-	return false;
+}
 
+bool	request::errorHandler(std::string	msgError)
+{
+	response	errorRsp;
+	int			statusCode = std::stoi(msgError);
+	errorRsp._statusLine = HTTPV1;
+	errorRsp._statusLine += SPACE;
+	errorRsp._statusLine += msgError;
+	errorRsp._headers["Connection"] = "close";
+	errorRsp._headers["Content-Type"] = "text/html;";
+	std::cout  << "statusCode: ||"<< statusCode << std::endl;
+	if (_data[_nbServer].getErrorPageMap().count(statusCode) == 1)
+	{
+		std::string	errorPath  = _data[_nbServer].getErrorPageMap().find(statusCode)->second;
+		errorPath = _data[_nbServer].getRootDir() + errorPath;
+		pathCorrection(errorPath);
+		std::ifstream	file;
+		std::ostringstream streambuff;
+		std::cout << "errorPtah: ||" << errorPath << std::endl;
+		file.open(errorPath, std::ios::binary);
+		if (file.is_open())
+		{
+			streambuff << file.rdbuf();
+			errorRsp._body = streambuff.str();
+			// std::cout << "hello from here 7mar: || " << errorRsp._body << std::endl;
+			file.close();
+		}
+		else
+		{
+			msgError = "500 internal Server Error";
+			fillError(errorRsp, msgError);
+		}
+	}
+	else
+		fillError(errorRsp, msgError);
+	makeResponse(errorRsp, *this);
+	return false;
 }
 
 request::~request()

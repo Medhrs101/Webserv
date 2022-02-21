@@ -4,6 +4,7 @@
 #include <map>
 #include <sstream>
 #define HTTPV1 "HTTP/1.1"
+// #define HTTPV2 "HTTP/2"
 #define SPACE " "
 #define CRLF "\r\n"
 
@@ -54,7 +55,7 @@ private:
 	std::string 								_port;
 	std::vector<ServerData> 					_data;
 	std::vector<Location>						_locations;
-	std::string									_responseStr;
+	// std::string									_responseStr;
 	std::vector<s_blockPost>					blockPost;
 	std::string									_queryStr;
 	int											_nbServer;
@@ -106,6 +107,7 @@ public:
 	bool	DELETERequest();
 	void	isRedirection();
 	void	boundaryParser(std::string, std::string);
+	bool	errorHandler(std::string	msgError);
 
 	std::string const & getResponse() const
 	{
