@@ -10,6 +10,7 @@ class queue{
         int     _contentSent;
         size_t     _contentRead;
         std::string _resString;
+        bool        _isChunked;
     public:
         bool    _isDone;
         std::string _reqString;
@@ -29,7 +30,9 @@ class queue{
         void    parseReq();
         void    setReq(request &_req);
         void     reqCheack();
-
+        bool    isChunked(void);
+        bool    isDone(void);
+        void    chunkParser();
         void    setcontentSent(int size);
         ~queue();
 };

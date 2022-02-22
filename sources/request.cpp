@@ -48,7 +48,7 @@ void    request::requestParser(std::string req)
 {
 	std::string	ret;
 	_reqstr = req;
-	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -80,15 +80,15 @@ void    request::requestParser(std::string req)
 	this->findServer();
 	// std::cout << "number of server: " << _nbServer <<std::endl;
 	this->findLocations();
-	std::cout << "number of location: " << _nbLocation << std::endl;
+	// std::cout << "number of location: " << _nbLocation << std::endl;
 	if ((ret = parseBody(_reqstr.substr(j, _reqLine.size() - j))) != "OK")
 	{
 		errorHandler (ret);
 		return;
 	}
+		// std::cout << RED << "ATTENTION*********there is a seg-fault********" << RESET << std::endl;
 	if (handleRequests())
 	{
-		// std::cout << RED << "ATTENTION*********there is a seg-fault********" << RESET << std::endl;
 		// this->printReqData();
 		return ;
 	}
@@ -141,7 +141,7 @@ void	makeResponse(response & response, request & req)
 	respStr += response._body;
 	respStr += "\r\n\r\n";
 	if (respStr.length() < 1000)
-	std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
+	// std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
@@ -199,7 +199,7 @@ bool	request::GETRequest()
 	else
 		_path = _locations[_nbLocation].getRootDir() + _path;
 	pathCorrection(_path);
-	std::cout << "PATH: |" << _path << std::endl;
+	// std::cout << "PATH: |" << _path << std::endl;
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		if (access(_path.c_str(), R_OK))
@@ -234,7 +234,7 @@ bool	request::GETRequest()
 		response._headers["Connection"] = "keep-alive"; 
 	
 	bitbit:
-	if (this->_path.substr(_path.find_last_of('.') + 1) == "php" || this->_path.substr(_path.find_last_of('.') + 1) == "py"){
+	if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
 		after_sgi_string(response);
 	}
 		makeResponse(response, *this);
@@ -266,6 +266,7 @@ void	request::boundaryParser(std::string boundary, std::string str)
 	for (size_t z = 0; i < str.length(); z++)
 	{
 		t_blockPost		block = t_blockPost();
+		block.isFile = false;
 		size_t j = str.find("--" + boundary, i);
         // std::cout << RED"*************************begin********************************"RESET << std::endl;
         std::string content = str.substr(i , j - i);
@@ -335,12 +336,12 @@ bool	request::POSTRequest()
 		boundaryParser(boundary, _bodyMessage);
 		for (size_t i = 0; i < blockPost.size(); i++)
 		{
+			// std::cout << MAG <<"fileeeeeeee: |"<< blockPost[i].isFile << "|" << RESET << std::endl;
 			if (blockPost[i].isFile)
 			{
 				blockPost[i].filename = uploadpath +  blockPost[i].filename;
 				output.open(blockPost[i].filename);
 				pathCorrection(blockPost[i].filename);
-				// std::cout << "fileeeeeeee: |"<< blockPost[i].filename << "|" << std::endl;
 				if (output.is_open())
 				{
 					output << blockPost[i].value;
@@ -364,8 +365,9 @@ bool	request::POSTRequest()
 		// errorHandler("500 Tkays a chabab mzl ma sowebna hadi");
 		// return ;
 	}
-	else
-		return errorHandler("415 Unsupported Media Type");
+	// else
+	// 	return errorHandler("415 Unsupported Media Type");
+	
 	_path = pathTemp;
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
@@ -373,9 +375,15 @@ bool	request::POSTRequest()
 	resp._headers["Content-Length"] = std::to_string(resp._body.length());
 	resp._headers["Content-Type"] = "text/html";
 	if (_header.count("Connection") == 0 || _header.find("Connection")->second == "closed")
-	resp._headers["Connection"] = "closed";
+		resp._headers["Connection"] = "closed";
 	else
-	resp._headers["Connection"] = "keep-alive"; 
+		resp._headers["Connection"] = "keep-alive";
+	if (_path.find_last_of('.') != std::string::npos){
+		if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
+			after_sgi_string(resp);
+		};
+	}
+	std::cout << RED << "ATTENTION*********there is a seg-fault********" << RESET << std::endl;
 	makeResponse(resp, *this);
 	return true;
 }
@@ -701,7 +709,6 @@ void	fillError(response & errorRsp, std::string & msgError)
 	errorRsp._body += "</html>";
 	errorRsp._body +=  CRLF;
 	errorRsp._body += CRLF;
-	errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
 }
 
 bool	request::errorHandler(std::string	msgError)
@@ -714,6 +721,8 @@ bool	request::errorHandler(std::string	msgError)
 	errorRsp._headers["Connection"] = "close";
 	errorRsp._headers["Content-Type"] = "text/html;";
 	std::cout  << "statusCode: ||"<< statusCode << std::endl;
+	std::cout << "hello from here: || " << _nbServer << "|"<< std::endl;
+
 	if (_data[_nbServer].getErrorPageMap().count(statusCode) == 1)
 	{
 		std::string	errorPath  = _data[_nbServer].getErrorPageMap().find(statusCode)->second;
@@ -727,7 +736,7 @@ bool	request::errorHandler(std::string	msgError)
 		{
 			streambuff << file.rdbuf();
 			errorRsp._body = streambuff.str();
-			// std::cout << "hello from here 7mar: || " << errorRsp._body << std::endl;
+			// std::cout << "hello from here: || " << errorRsp._body << std::endl;
 			file.close();
 		}
 		else
@@ -738,6 +747,7 @@ bool	request::errorHandler(std::string	msgError)
 	}
 	else
 		fillError(errorRsp, msgError);
+	errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
 	makeResponse(errorRsp, *this);
 	return false;
 }
@@ -754,17 +764,27 @@ std::string	request::getPostData(){
 		query = this->_queryStr;
 		return query;
 	}
-	for(int i = 0; blockPost.size(); i++){
+	log BLU << "*******************************************" << RESET line;
+	for(int i = 0; i < blockPost.size(); i++){
 		if (blockPost[i].isFile){
 			query += blockPost[i].key + "=" + blockPost[i].filename;
 		}
 		else{
-			query = blockPost[i].key + "=" + blockPost[i].filename;
+			query = blockPost[i].key + "=" + blockPost[i].value;
 		}
 		if (i + 1 != blockPost.size())
 			query.append("&");
 	}
 	return query;
+}
+
+std::string upCase(std::string str){
+	std::string ret;
+	for (size_t i = 0; i < str.length(); i++)
+	{
+		ret.append(1, toupper(str[i]));
+	}
+	return ret;
 }
 
 void	request::after_sgi_string(response & response){
@@ -817,13 +837,15 @@ void	request::after_sgi_string(response & response){
 	setenv("SERVER_PORT", std::to_string(this->_data[_nbServer].getPort()).c_str(), 1);
 	setenv("REDIRECT_STATUS", "0", 1);
 	setenv("CONTENT_TYPE", "application/x-www-form-urlencoded", 1);
+	for(std::multimap<std::string, std::string>::iterator i = this->_header.begin(); i != this->_header.end(); i++){
+		setenv( ("HTTP_" + upCase(i->first)).c_str(), (i->second).c_str(), 1);
+	}
 	if (this->_reqMethod == "GET"){
 		setenv("QUERY_STRING", this->_query.c_str(), 1);
 	}
 	else if (this->_reqMethod == "POST"){
 		data = getPostData();
 		setenv("CONTENT_LENGTH", std::to_string(data.length()).c_str() , 1);
-		int res =  ::write(Ipipe[1], data.c_str(),data.length());
 	}
 
     extern char **environ;
@@ -855,10 +877,12 @@ void	request::after_sgi_string(response & response){
     else{
 		close(Opipe[1]);
 		close(Ipipe[0]);
+		int res =  ::write(Ipipe[1], data.c_str(),data.length());
 		close(Ipipe[1]);
 		while ((res = read(Opipe[0], buff, sizeof(buff)))){
             body.append(buff, res);
 		}
+		wait(NULL);
 		char *header = ::strdup(body.substr(0, body.find("\n\r")).c_str());
 		char *token = ::strtok(header, "\n");
 		while (token != NULL)

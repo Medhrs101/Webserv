@@ -7,7 +7,10 @@
 
 
     void    server::initial_sockets(){
+        std::vector<int> Ports;
         for(int i = 0; i < _data.size();i++){
+            if (std::find(Ports.begin(),Ports.end(), _data[i].getPort()) != Ports.end())
+                continue ;
             _socket_list.push_back(__socket());
             if (_socket_list[i].init(_data[i].getPort(), _data[i].getHost()) == -1)
                 continue ;
@@ -17,6 +20,7 @@
             }
             else{
                 std::cout <<  CYN << "LISTENING ON  " << _data[i].getHost() << _data[i].getPort() << std::endl;
+                Ports.push_back(_data[i].getPort());
             }
         }
     };
@@ -53,57 +57,14 @@
         std::string req_string;
         struct pollfd   evPoll;
 
-        std::cout << GREEN << "[>>>>>>>>> Web Server Started <<<<<<<<<]" << RESET << std::endl;
+        std::cout << GREEN << "\e[1m" << "Web Server Started" << RESET << std::endl;
         initial_sockets();
         if (pollList() == 0)
         {
-            std::cerr << RED << "fatal Error : Cannot creat any vertual server" << RESET << std::endl;
+            std::cerr << RED << "Fatal Error : Cannot creat any Virtual server" << RESET << std::endl;
             exit(EXIT_FAILURE);
         }
         _queue.IOwatch();
-        // while (true)
-        // {
-        //     std::cout << "---------------- waiting for EVENT ----------------" << std::endl;
-        //     rc = poll(&(_pollfd_list[0]), _fdNum, -1);
-        //     if ( rc == -1)
-        //         throw Socketexeption("kevent");
-        //     int _size = _fdNum;
-        //     for(int i = 0; i < _size; i++){
-        //         if (_pollfd_list[i].revents == 0)
-		// 		    continue ;
-        //         int event_fd = _pollfd_list[i].fd;
-        //         if ((_pollfd_list[i].revents & POLLERR) || (_pollfd_list[i].revents & POLLNVAL)){
-        //             this->deleteS(i);
-        //             continue ;
-        //         }
-        //         else if (_pollfd_list[i].revents & POLLIN){
-        //             if (std::find(master_fds.begin(), master_fds.end(), _pollfd_list[i].fd) != master_fds.end()){
-        //                 new_socket = accept(_pollfd_list[i].fd, (struct sockaddr *) &_address, (socklen_t *) &_addrlen);
-        //                 if (new_socket < 0){
-        //                     throw Socketexeption("accept");
-        //                 }
-        //                 fcntl(new_socket, F_SETFL, O_NONBLOCK);
-        //                 std::cout << "---------------- new connecticon " <<  new_socket << "----------------"  << std::endl;
-        //                 evPoll.fd = new_socket;
-        //                 evPoll.events = POLLIN;
-        //                 evPoll.revents = 0;
-        //                 _pollfd_list.push_back(evPoll);
-        //                 _fdNum++;
-        //             }
-        //             else{
-        //                 n = i;
-        //                 req_string = readReq(_pollfd_list[i].fd, &n);
-        //                 if (n == 0)
-        //                     continue;
-        //                 if (n > 0){
-        //                     req.initialize();
-        //                     req.requestParser(req_string);
-        //                     _pollfd_list[i].events = POLLIN | POLLOUT;
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
     }
 
     void    server::deleteS(int index){

@@ -1,6 +1,5 @@
 #include "../includes/Webserv.hpp"
-
-queue::queue(std::vector<ServerData> data):_contentSent(0),_contentLent(0),_isDone(true),_contentRead(0), _req(data){}
+queue::queue(std::vector<ServerData> data):_contentSent(0),_contentLent(0),_isDone(true), _isChunked(false),_contentRead(0), _req(data){}
 
 queue    queue::initQueueElm(int  fd, request req){
     this->_contentSent = 0;
@@ -8,6 +7,136 @@ queue    queue::initQueueElm(int  fd, request req){
     this->_fd = fd;
     this->_req = req;
     return (*this);
+}
+
+int     HexToDec(std::string hexVal)
+{
+    int len = hexVal.size();
+    int base = 16;
+    int dec_val = 0;
+
+    
+    for (int i = 0; i < len; i++) {
+        if (hexVal[i] >= '0' && hexVal[i] <= '9') {
+            dec_val += (int(hexVal[i]) - 48) * (std::pow(base, len - i - 1));
+        } 
+        else if ((hexVal[i] >= 'A' && hexVal[i] <= 'F')) {
+            dec_val += (int(hexVal[i]) - 55) * (std::pow(base, len - i - 1));
+        }
+        else if ((hexVal[i] >= 'a' && hexVal[i] <= 'f')) {
+            dec_val += (int(hexVal[i]) - 87) * (std::pow(base, len - i - 1));
+        }
+        else
+            break;
+    }
+    // std::cout << hexVal << "  hex  " << dec_val << std::endl;
+    return dec_val;
+}
+
+bool    isHex(std::string tmp){
+    if (tmp[0] == '\r')
+        return false;
+    size_t pos = tmp.find_first_not_of("0123456789ABCDEFabcdef");
+    if (tmp[pos] == '\r')
+        return true;
+    else
+        return false;
+}
+
+void    queue::chunkParser(){
+    std::string body;
+    std::string tmp;
+    std::string newBody;
+    size_t i = 0;
+    size_t cnt = 0;
+    bool    alter = false;
+    size_t cLent = 0;
+    std::string Head;// = _reqString.substr(0, i + 4);
+
+
+    if (_isChunked && _isDone){
+        i = _reqString.find("\r\n\r\n");
+
+        if (i != std::string::npos){
+            Head = _reqString.substr(0, i + 4);
+            body = _reqString.substr(i + 4);
+            while (!body.empty())
+            {
+                cnt = body.find("\r\n");
+                std::string tmp;
+                tmp = body.substr(0, cnt + 1);
+                if ((alter = isHex(tmp))){
+                    tmp.pop_back();
+
+                    cLent = HexToDec(tmp);
+                //     if (cLent == 0)
+                //         break ;
+                    body.erase(0, cnt + 2);
+                    newBody.append(body,0, cLent);
+                    body.erase(0, cLent);
+                }
+                else if (tmp[0] == '\r'){
+                    body.erase(0, 2);
+                }
+                cLent = 0;
+            }
+            _reqString = Head + newBody;
+            _isChunked = false;
+        }
+    }
+}
+
+bool        queue::isBodyDone(){
+    size_t  i = this->_reqString.find("\r\n\r\n");
+    // size_t body_size = std::max(_reqString.length() - (i + 4), this->_contentRead);
+    size_t body_size = _reqString.length() - (i + 4);
+    // size_t body_size = this->_contentRead;
+    std::cout << " bodd_size /////////////////" << body_size << std::endl;
+    if (_isDone == false && body_size < this->_contentLent){
+        return false;
+    }
+    return true;
+}
+
+void     queue::reqCheack(){
+    std::string req = this->_reqString;
+    size_t dmt = 0;
+    size_t i = 0;
+    size_t c_lent = 0;
+
+    dmt = req.find("\r\n\r\n");
+    if (dmt != std::string::npos){
+        dmt = req.find("Transfer-Encoding: chunked");
+        if( dmt != std::string::npos){
+            _isChunked = true;
+            dmt = req.find("0\r\n\r\n");
+            if ( dmt != std::string::npos ){
+                _isDone = true;
+            }
+            else
+                _isDone = false;
+            return;
+        }
+        if (!_isChunked && (i = req.find("Content-Length:")) != std::string::npos) {
+            c_lent = ::atoi(req.substr(req.find(":", i) + 1).c_str());
+            std::cout << "c_lent /////////////////|" << c_lent<< "|" << std::endl;
+            this->setcontentLent(c_lent);
+            _isDone = isBodyDone();
+            return ;
+        }
+        else{
+            _isDone = 1;
+            return ;
+        }
+    }
+    else{
+        _isDone = 0;
+    }
+}
+
+void    queue::parseReq(){
+    this->_req.requestParser(this->_reqString);
+    this->_resString = this->_req.getResponse();
 }
 
 void     queue::setFD(int fd){
@@ -23,17 +152,21 @@ void    queue::setcontentSent(int size){
     this->_contentSent = size;
 }
 
-void    queue::parseReq(){
-    this->_req.requestParser(this->_reqString);
-    this->_resString = this->_req.getResponse();
+
+void    queue::setReq(request &req){
+    this->_req = req;
+}
+
+void         queue::setcontentLent(int nb){
+    this->_contentLent = nb;
+}
+
+void         queue::setcontentRead(size_t nb){
+    this->_contentRead += nb;
 }
 
 const std::string &queue::getResponse() const{
     return this->_resString;
-}
-
-void    queue::setReq(request &req){
-    this->_req = req;
 }
 
 request &queue::getReq(){
@@ -48,55 +181,20 @@ size_t         queue::getcontentRead() const{
     return this->_contentRead;
 }
 
-void         queue::setcontentLent(int nb){
-    this->_contentLent = nb;
-}
-void         queue::setcontentRead(size_t nb){
-    this->_contentRead += nb;
-}
 int         &queue::getReqSent(){
     return this->_contentSent;
 }
+
 int     queue::getFD() const{
     return this->_fd;
 }
 
-bool        queue::isBodyDone(){
-    size_t  i = this->_reqString.find("\r\n\r\n");
-    // size_t body_size = std::max(_reqString.length() - (i + 4), this->_contentRead);
-    size_t body_size = _reqString.length() - (i + 4);
-    // size_t body_size = this->_contentRead;
-    std::cout << "/////////////////" << body_size << std::endl;
-    if (_isDone == false && body_size < this->_contentLent){
-        return false;
-    }
-    return true;
+bool    queue::isChunked(void){
+    return this->_isChunked;
 }
 
-void     queue::reqCheack(){
-    std::string req = this->_reqString;
-    size_t dmt = 0;
-    size_t i = 0;
-    size_t c_lent = 0;
-
-    dmt = req.find("\r\n\r\n");
-    std::cout << "/////////////////" << dmt << std::endl;
-    if (dmt != std::string::npos){
-        if ((i = req.find("Content-Length:")) != std::string::npos) {
-            c_lent = ::atoi(req.substr(req.find("Content-Length:") + 15, req.find('\r', i)).c_str());
-            this->setcontentLent(c_lent);
-            std::cout << "/////////////////" << c_lent << std::endl;
-            _isDone = isBodyDone();
-            return ;
-        }
-        else{
-            _isDone = 1;
-            return ;
-        }
-    }
-    else{
-        _isDone = 0;
-    }
+bool    queue::isDone(void){
+    return this->_isDone;
 }
 
 queue::~queue(){}
