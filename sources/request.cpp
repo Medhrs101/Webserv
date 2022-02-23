@@ -438,7 +438,7 @@ bool	request::handleRequests()
 	else if (_reqMethod == "DELETE")
 		return DELETERequest();
 	else
-		return errorHandler("404 Bad request");
+		return errorHandler("405 Not Allowed");
 }	
 
 void	request::findLocations()
