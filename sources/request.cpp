@@ -26,6 +26,8 @@ void	request::initialize(void) {
 	this->_reqMethod = std::string();
 	this->_reqstr = std::string();
 	this->_reqUri = std::string();
+	this->_nbServer = 0;
+	// this->_nbServer = 0;
 	this->_reqHeader = nullptr;
 	this->_header.clear();
 };
@@ -43,12 +45,24 @@ request::request(std::vector<ServerData> data): _data(data)
 	// this->hundleReqLine();
 }
 
+bool	request::handleRequests()
+{
+	//TODO: allowed method
+	// std::cout << _reqMethod << std::endl;
+	if (_reqMethod == "GET")
+		return GETRequest();
+	else if (_reqMethod == "POST")
+		return POSTRequest();
+	else if (_reqMethod == "DELETE")
+		return DELETERequest();
+	return false;
+}
 
 void    request::requestParser(std::string req)
 {
 	std::string	ret;
 	_reqstr = req;
-	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -86,8 +100,13 @@ void    request::requestParser(std::string req)
 		errorHandler (ret);
 		return;
 	}
-	if (handleRequests())
+	if (!handleRequests())
 	{
+		if (_reqMethod != "GET" && _reqMethod != "POST" && _reqMethod != "DELETE")
+		{
+			errorHandler("405 Not Allowed");
+			return;
+		}
 		// std::cout << RED << "ATTENTION*********there is a seg-fault********" << RESET << std::endl;
 		// this->printReqData();
 		return ;
@@ -140,8 +159,8 @@ void	makeResponse(response & response, request & req)
 	respStr += CRLF;
 	respStr += response._body;
 	respStr += "\r\n\r\n";
-	if (respStr.length() < 1000)
-	std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
+	// if (respStr.length() < 1000)
+		// std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
@@ -175,6 +194,39 @@ std::string contentType (std::string path)
 	
 // }
 
+std::string	request::autoIndexGenerator(std::string path)
+{
+	std::string body;
+	DIR *dir;
+    struct dirent *dp;
+
+    if ((dir = opendir (path.c_str())) == NULL)
+	{
+		_bodyMessage = "";
+		return "OK";
+	}
+	_bodyMessage += "<head><title>Index of /</title></head>\n";
+	_bodyMessage += "<body>\n";
+	_bodyMessage += "<hr>\n";
+	_bodyMessage += "<pre>\n";
+    while ((dp = readdir (dir)) != NULL)
+	{
+		_bodyMessage += "<a href=\"";
+		_bodyMessage += dp->d_name;
+		_bodyMessage += "\">";
+		_bodyMessage += dp->d_name;
+		_bodyMessage += "</a>\n";
+	}
+	
+	_bodyMessage += "</pre>\n";
+	_bodyMessage += "<hr>\n";
+	_bodyMessage += "</body>\n";
+	_bodyMessage += "</html>\n";
+		// std::cout << GREEN << "-->" << _bodyMessage << RESET << std::endl;
+	closedir(dir);
+	return "OK";
+}
+
 bool	request::GETRequest()
 {
 	response		response;
@@ -199,11 +251,23 @@ bool	request::GETRequest()
 	else
 		_path = _locations[_nbLocation].getRootDir() + _path;
 	pathCorrection(_path);
-	std::cout << "PATH: |" << _path << std::endl;
+	// std::cout << "PATH: |" << _path << std::endl;
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		if (access(_path.c_str(), R_OK))
 			return errorHandler("403 Forbidden");
+		if (_locations[_nbLocation].getAutoIndex() == true)
+		{
+			std::string ret;
+			if ((ret = autoIndexGenerator(_path)) != "OK")
+				return errorHandler(ret);
+			response._body = _bodyMessage;
+			response._headers["Connection"] = "keep-alive";
+			response._headers["Content-Type"] = "text/html";
+			// if (response._body.empty())
+			// 	return errorHandler("500 internal Server Error");
+		
+		}
 		if (info.st_mode & S_IFDIR)
 		{
 			_path += "/" + _locations[_nbLocation].getDefaultFile();
@@ -211,7 +275,7 @@ bool	request::GETRequest()
 		}
 	}
 	else
-		return errorHandler("404 Not Found");
+		return errorHandler("404 Not Found1");
 	if (response._body.empty() == true)
 	{
 		std::ostringstream streambuff;
@@ -266,6 +330,7 @@ void	request::boundaryParser(std::string boundary, std::string str)
 	for (size_t z = 0; i < str.length(); z++)
 	{
 		t_blockPost		block = t_blockPost();
+		block.isFile = false;
 		size_t j = str.find("--" + boundary, i);
         // std::cout << RED"*************************begin********************************"RESET << std::endl;
         std::string content = str.substr(i , j - i);
@@ -299,7 +364,7 @@ bool	request::POSTRequest()
 {
 	response		resp;
 	std::ofstream	output;
-	std::string		pathTemp;
+	// std::string		pathTemp;
 	struct stat info;
 	blockPost.clear();
 	_queryStr.clear();
@@ -315,12 +380,12 @@ bool	request::POSTRequest()
 	}
 	else
 		return errorHandler ("404 Not Found");
-	if (_locations[_nbLocation].isCGI())
-	{
-		pathTemp = _path;
-		_path = pathTemp.substr(0, _path.find_last_of("/") + 1);
-		findLocations();
-	}
+	// if (_locations[_nbLocation].isCGI())
+	// {
+	// 	pathTemp = _path;
+	// 	_path = pathTemp.substr(0, _path.find_last_of("/") + 1);
+	// 	findLocations();
+	// }
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false \
 		|| _locations[_nbLocation].getUploadEnabled() == false)
 		return errorHandler("405 Not Alowed");
@@ -366,16 +431,15 @@ bool	request::POSTRequest()
 	}
 	else
 		return errorHandler("415 Unsupported Media Type");
-	_path = pathTemp;
 	resp._statusLine = HTTPV1;
 	resp._statusLine += " 200 OK";
 	resp._body = "<html><body><h1>The Media has been uploaded successfully</h1></body></html>";
 	resp._headers["Content-Length"] = std::to_string(resp._body.length());
 	resp._headers["Content-Type"] = "text/html";
 	if (_header.count("Connection") == 0 || _header.find("Connection")->second == "closed")
-	resp._headers["Connection"] = "closed";
+		resp._headers["Connection"] = "closed";
 	else
-	resp._headers["Connection"] = "keep-alive"; 
+		resp._headers["Connection"] = "keep-alive"; 
 	makeResponse(resp, *this);
 	return true;
 }
@@ -428,31 +492,37 @@ bool	request::DELETERequest()
 	return true;
 }
 
-bool	request::handleRequests()
+void	parentPath(std::string &  str)
 {
-	//TODO: allowed method
-	if (_reqMethod == "GET")
-		return GETRequest();
-	else if (_reqMethod == "POST")
-		return POSTRequest();
-	else if (_reqMethod == "DELETE")
-		return DELETERequest();
-	else
-		return errorHandler("404 Bad request");
-}	
+	size_t	len = str.length();
+	if (str[len] == '/')
+		len--;
+	while (len > 1 && str[len] != '/')
+		len--;
+		// std::cout << len << std::endl;
+	str = str.substr(0, len);
+}
 
 void	request::findLocations()
 {
-	this->_locations = _data[_nbServer].getLocations();
-	int		LocationNum  = 0;
-	for (size_t i = 0; i < _locations.size(); i++)
+	std::string	str = _path;
+	int			LocationNum  = 0;
+
+	_locations = _data[_nbServer].getLocations();
+	while (str != "/")
 	{
-		// std::cout << "location path: " << _locations[i].getPath() << std::endl;
-		// std::cout << "_path: " << _path << std::endl;
-		if (_path.find(_locations[i].getPath()) != std::string::npos)
-			LocationNum = i;
+		for (size_t i = _locations.size(); i > 0; i--)
+		{
+			if (_locations[i].getPath() == str)
+			{
+				LocationNum = i;
+				goto __result;
+			}
+		}
+			parentPath(str);
 	}
-	_nbLocation = LocationNum;
+	__result:_nbLocation = LocationNum;
+	// std::cout << _nbLocation << std::endl;
 }
 
 void	request::findServer()
@@ -478,7 +548,7 @@ void	request::findServer()
 		// 	std::cout << v[i] << std::endl;
 		// }
 	}
-	this->_nbServer = 0;
+	_nbServer = 0;
 }
 
 std::string	request::parseBody(std::string	reqBody)
@@ -545,7 +615,11 @@ std::string	request::parseReqHeader(std::string reqHeader)
 			break;
 	}
 	if (this->_header.count("Host") != 1)
+	{
+
+		// std::cout << RED << "hello from here" << RESET << std::endl;
 		return ("400 Bad Request");
+	}
 	else
 	{
 		std::string	hosTemp;
@@ -701,7 +775,7 @@ void	fillError(response & errorRsp, std::string & msgError)
 	errorRsp._body += "</html>";
 	errorRsp._body +=  CRLF;
 	errorRsp._body += CRLF;
-	errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
+	// errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
 }
 
 bool	request::errorHandler(std::string	msgError)
@@ -713,7 +787,9 @@ bool	request::errorHandler(std::string	msgError)
 	errorRsp._statusLine += msgError;
 	errorRsp._headers["Connection"] = "close";
 	errorRsp._headers["Content-Type"] = "text/html;";
-	std::cout  << "statusCode: ||"<< statusCode << std::endl;
+	// std::cout  << "statusCode: ||"<< statusCode << std::endl;
+	// std::cout << RED << "hello from here: ||" << msgError <<  RESET << std::endl;
+	// _data[_nbServer].getErrorPageMap().count(statusCode);
 	if (_data[_nbServer].getErrorPageMap().count(statusCode) == 1)
 	{
 		std::string	errorPath  = _data[_nbServer].getErrorPageMap().find(statusCode)->second;
@@ -721,7 +797,7 @@ bool	request::errorHandler(std::string	msgError)
 		pathCorrection(errorPath);
 		std::ifstream	file;
 		std::ostringstream streambuff;
-		std::cout << "errorPtah: ||" << errorPath << std::endl;
+		// std::cout << "errorPtah: ||" << errorPath << std::endl;
 		file.open(errorPath, std::ios::binary);
 		if (file.is_open())
 		{
@@ -737,7 +813,11 @@ bool	request::errorHandler(std::string	msgError)
 		}
 	}
 	else
+	{
+
 		fillError(errorRsp, msgError);
+	}
+	errorRsp._headers["Content-Length"] = std::to_string(errorRsp._body.length());
 	makeResponse(errorRsp, *this);
 	return false;
 }
