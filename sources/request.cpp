@@ -26,7 +26,7 @@ void	request::initialize(void) {
 	this->_reqMethod = std::string();
 	this->_reqstr = std::string();
 	this->_reqUri = std::string();
-	this->_nbServer = 0;
+	_nbServer = 0;
 	// this->_nbServer = 0;
 	this->_reqHeader = nullptr;
 	this->_header.clear();
@@ -76,6 +76,7 @@ void    request::requestParser(std::string req)
 		errorHandler (ret);
 		return;
 	}
+	std::cout << RED << "Attention error here " << RESET << std::endl;
 	size_t	j = _reqstr.find("\r\n\r\n");
 	// std::cout << j << std::endl;
 	if (j == std::string::npos)
@@ -217,7 +218,6 @@ std::string	request::autoIndexGenerator(std::string path)
 		_bodyMessage += dp->d_name;
 		_bodyMessage += "</a>\n";
 	}
-	
 	_bodyMessage += "</pre>\n";
 	_bodyMessage += "<hr>\n";
 	_bodyMessage += "</body>\n";
@@ -250,7 +250,7 @@ bool	request::GETRequest()
 	else
 		_path = _locations[_nbLocation].getRootDir() + _path;
 	pathCorrection(_path);
-	// std::cout << "PATH: |" << _path << std::endl;
+	std::cout << "PATH: |" << _path << std::endl;
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		if (access(_path.c_str(), R_OK))
@@ -392,8 +392,9 @@ bool	request::POSTRequest()
 		return errorHandler("405 Not Alowed");
 	std::string	uploadpath = _locations[_nbLocation].getUploadLocation();
 	uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
-	std::string	ContentType = _header.find("Content-Type")->second;
-	// std::cout << "uploadPath: ||" << uploadpath << std::endl;
+	std::string	ContentType = (_header.find("Content-Type") == _header.end() ? "none" : _header.find("Content-Type")->second);
+
+	std::cout << "uploadPath: ||" << ContentType << std::endl;
 	if (ContentType.find("multipart/form-data") != std::string::npos)
 	{
 		// std::cout << "***********************begin****************************<\n"GREEN << this->_bodyMessage << RESET"\n>*****************end********************" << std::endl;
@@ -431,6 +432,8 @@ bool	request::POSTRequest()
 		// errorHandler("500 Tkays a chabab mzl ma sowebna hadi");
 		// return ;
 	}
+	else if(ContentType == "none")
+	{}
 	else
 		return errorHandler("415 Unsupported Media Type");
 	resp._statusLine = HTTPV1;
@@ -467,32 +470,50 @@ bool	request::POSTRequest()
 	
 // }
 
+bool    findInDir(std::string & path, std::string & root){
+    DIR *dr;
+    struct dirent *dir;
+    char rpath[PATH_MAX];
+
+    realpath(path.c_str(), rpath);
+    std::cout << rpath << std::endl;
+    size_t cp = std::string(rpath).find(root);
+    if (cp != std::string::npos)
+        return true;
+    return false;
+}
+
 bool	request::DELETERequest()
 {
 	response	resp;
 	struct stat info;
 	
+	std::string root;
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
 		return errorHandler ("405 Not Allowed");
 	if (_locations[_nbLocation].getRootDir().empty())
-		_path = _data[_nbServer].getRootDir() + _path;
+		root = _data[_nbServer].getRootDir();
 	else
-		_path = _locations[_nbLocation].getRootDir() + _path;
+		root = _locations[_nbLocation].getRootDir();
+	_path = root + _path;
 	pathCorrection(_path);
+	std::cout << RED << "DELETE PATH: |" << _path << RESET << std::endl; 
 	if (stat(_path.c_str(), &info) == 0)
 	{
+		// std::cout << "path: |" << _data[_nbServer].getRootDir() << std::endl;
+		// std::cout << RED <<  std::boolalpha <<  << RESET << std::endl;
+		//TODO: test delete
+
+		if (!findInDir(_path, root))
+			return errorHandler("403 Forbidden");
+		if (!(info.st_mode & S_IRUSR) || !(info.st_mode & S_IWUSR) || !(info.st_mode & S_IXUSR))
+			return errorHandler("403 Forbidden");
 		std::cout << "path: |" << _path << std::endl;
-		std::cout << "path: |" << _data[_nbServer].getRootDir() << std::endl;
-		// pathFix(_path);
-		if (_path.find(".."))
-			return errorHandler("404 Not Found");
 		if (_path.find(_data[_nbServer].getRootDir()) != std::string::npos)
 		{
 			if (remove(_path.c_str()) != 0)
 				return errorHandler("500 Internal Server Error");
 		}
-		else
-			return errorHandler("400 you can only remove file from root");
 			
 	}
 	else
@@ -568,7 +589,7 @@ void	request::findServer()
 std::string	request::parseBody(std::string	reqBody)
 {
 	this->_bodyMessage = reqBody;
-	// std::cout << "hello" << std::endl;
+	// std::cout << "hello" <<  _bodyMessage << std::endl;
 	if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
 	{
 		return ("413 Payload Too Large");
@@ -801,9 +822,9 @@ bool	request::errorHandler(std::string	msgError)
 	errorRsp._statusLine += msgError;
 	errorRsp._headers["Connection"] = "close";
 	errorRsp._headers["Content-Type"] = "text/html;";
-	// std::cout  << "statusCode: ||"<< statusCode << std::endl;
-	// std::cout << RED << "hello from here: ||" << msgError <<  RESET << std::endl;
+	std::cout  << "statusCode: ||"<< statusCode << std::endl;
 	// _data[_nbServer].getErrorPageMap().count(statusCode);
+		std::cout << RED << "hello from here: ||" << _nbServer <<  RESET << std::endl;
 	if (_data[_nbServer].getErrorPageMap().count(statusCode) == 1)
 	{
 		std::string	errorPath  = _data[_nbServer].getErrorPageMap().find(statusCode)->second;

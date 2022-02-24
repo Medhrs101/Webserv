@@ -73,6 +73,7 @@ void    IOhandler::inputEvent(int fd, int index){
         new_socket = accept(fd, (struct sockaddr *) &_address, (socklen_t *) &_addrlen);
         if (new_socket < 0){
             std::cerr << RED <<  "Cant accept Connection :" << inet_ntoa(_address.sin_addr) << strerror(errno) << RESET << std::endl;
+            exit(0);
             return ;
         }
         fcntl(new_socket, F_SETFL, O_NONBLOCK);
@@ -148,10 +149,10 @@ void    IOhandler::outputEvent(int fd, int index){
             }
         }
         std::cout << GREEN <<" Response sent :" << sen << RESET << std::endl;
-        // if (current.getReq().getHeaderOf("Connection").first == false || (current.getReq().getHeaderOf("Connection").first == true && current.getReq().getHeaderOf("Connection").second->second == "close")){
+        if (current.getReq().getHeaderOf("Connection").first == false || (current.getReq().getHeaderOf("Connection").first == true && current.getReq().getHeaderOf("Connection").second->second == "close")){
             this->deleteS(index);
             return;
-        // }
+        }
     }
     _pollfd_list[index].events = POLLIN;
     _pollfd_list[index].revents = 0;
@@ -224,6 +225,7 @@ IOhandler::~IOhandler(){};
             // TODO:  Rremove after error
             *n = -1;
             std::cout << "read Error";
+            exit(0);
             throw Socketexeption(strerror(errno));
         }
         else{

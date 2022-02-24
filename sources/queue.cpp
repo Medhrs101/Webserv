@@ -1,5 +1,5 @@
 #include "../includes/Webserv.hpp"
-queue::queue(std::vector<ServerData> data):_req(data),_contentLent(0),_contentSent(0),_contentRead(0),_isChunked(false),_isDone(false){}
+queue::queue(std::vector<ServerData> data):_req(data),_contentLent(0),_contentSent(0),_contentRead(0),_isChunked(false),_isDone(false){ getReq().initialize();}
 
 queue    queue::initQueueElm(int  fd, request req){
     this->_contentSent = 0;
