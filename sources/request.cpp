@@ -263,7 +263,7 @@ bool	request::GETRequest()
 				return errorHandler(ret);
 			response._body = _bodyMessage;
 			response._headers["Connection"] = "keep-alive";
-			response._headers["Content-Type"] = "text/html";
+			// response._headers["Content-Type"] = "text/html";
 			// if (response._body.empty())
 			// 	return errorHandler("500 internal Server Error");
 		
