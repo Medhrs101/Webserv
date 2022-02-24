@@ -80,6 +80,7 @@ void     queue::reqCheack(){
     size_t c_lent = 0;
 
     dmt = req.find("\r\n\r\n");
+    std::cout << "/////////////////" << dmt << std::endl;
     if (dmt != std::string::npos){
         if ((i = req.find("Content-Length:")) != std::string::npos) {
             c_lent = ::atoi(req.substr(req.find("Content-Length:") + 15, req.find('\r', i)).c_str());

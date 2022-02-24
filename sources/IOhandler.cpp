@@ -78,7 +78,7 @@ void    IOhandler::inputEvent(int fd, int index){
             throw Socketexeption("accept");
         }
         fcntl(new_socket, F_SETFL, O_NONBLOCK);
-        std::cout << "[ ---------- Accept connection from " << inet_ntoa(_address.sin_addr) << ":" << ntohs(_address.sin_port) << " ---------------- ]"  << std::endl;
+        std::cout << WHT <<  "[ NEW connection from " << inet_ntoa(_address.sin_addr) << ":" << ntohs(_address.sin_port) << " ---------------- ]" << RESET << std::endl;
         evPoll.fd = new_socket;
         evPoll.events = POLLIN;
         evPoll.revents = 0;
@@ -88,6 +88,7 @@ void    IOhandler::inputEvent(int fd, int index){
     }
     else{
         req_string = readReq(fd, &ret);
+        std::cout << req_string << std::endl;
         if (ret > 0){
             if (req_string[0] != '\r' || req_string.length()){
                 (*this)[fd]->setcontentRead(ret);
@@ -127,13 +128,15 @@ void    IOhandler::outputEvent(int fd, int index){
     // system("clear");
 
     current.reqCheack();
-    std::cout << "---- done in " << std::boolalpha  << current._isDone << std::endl;
+    std::cout << "---- is Done : " << std::boolalpha  << current._isDone << std::endl;
     if (current._isDone){
-        current.parseReq();
+        if (current.getReqSent() == 0)
+            current.parseReq();
         const std::string hello = current.getResponse();
         int  reqSize = hello.size();
         int  reqSent = current.getReqSent();
         int sen = send(fd, hello.c_str() + reqSent, reqSize - reqSent, 0);
+        std::cout << " <<< sent" << sen << std::endl;
         if (reqSent < reqSize){
             if (sen == -1){
                 throw Socketexeption(strerror(errno));
@@ -228,21 +231,22 @@ IOhandler::~IOhandler(){};
         }
         else{
             ret.append(buff, res);
-            while (res > 0)
-            {
-                *n += res;
-                temp += res;
-                if (res < 1023)
-                    break;
-                res = recv(fd, buff, sizeof(buff) - 1, 0);
-                if (res < 0)
-                    throw Socketexeption(strerror(errno));
-                // buff[res] = '\0';
-                if (res > 0){
-                    ret.append(buff, res);
-                }
-                bzero(buff,1024);
-            }
+            *n += res;
+            // while (res > 0)
+            // {
+            //     *n += res;
+            //     temp += res;
+            //     if (res < 1023)
+            //         break;
+            //     res = recv(fd, buff, sizeof(buff) - 1, 0);
+            //     if (res < 0)
+            //         throw Socketexeption(strerror(errno));
+            //     // buff[res] = '\0';
+            //     if (res > 0){
+            //         ret.append(buff, res);
+            //     }
+            //     bzero(buff,1024);
+            // }
             std::cout << " ---------------- read ----------------  " << *n << std::endl;
         }
         return ret;
