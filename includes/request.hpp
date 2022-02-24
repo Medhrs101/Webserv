@@ -106,6 +106,7 @@ public:
 	bool	GETRequest();
 	bool	POSTRequest();
 	bool	DELETERequest();
+	std::string	autoIndexGenerator(std::string);
 	void	isRedirection();
 	void	boundaryParser(std::string, std::string);
 	bool	errorHandler(std::string	msgError);
