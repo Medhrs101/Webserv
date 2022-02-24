@@ -140,8 +140,8 @@ void	makeResponse(response & response, request & req)
 	respStr += CRLF;
 	respStr += response._body;
 	respStr += "\r\n\r\n";
-	if (respStr.length() < 1000)
-	// std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
+	// if (respStr.length() < 1000)
+	// 	std::cout << "begin resp |" << respStr  << "|end resp" << std::endl;
 	req.setResponse(respStr);	
 }
 
@@ -183,7 +183,6 @@ bool	request::GETRequest()
 	std::string		errorMessage;
 	struct stat		info;
 
-	// std::cout << "path: | " << _path << std::endl;
 	if (_locations[_nbLocation].isRedirection())
 	{
 		returnCode = std::to_string(_locations[_nbLocation].getReturnCode());
@@ -192,7 +191,7 @@ bool	request::GETRequest()
 		response._headers["Location"] = _locations[_nbLocation].getReturnUrl();
 			goto bitbit;
 	}
-	if (_locations[_nbLocation]. getAllowedMethods().find("GET")->second == false)
+	if (_locations[_nbLocation].getAllowedMethods().find("GET")->second == false)
 		return errorHandler("405 Not Allowed");
 	if (_locations[_nbLocation].getRootDir().empty())
 		_path = _data[_nbServer].getRootDir() + _path;
@@ -232,10 +231,12 @@ bool	request::GETRequest()
 		response._headers["Connection"] = "closed";
 	else
 		response._headers["Connection"] = "keep-alive"; 
-	
 	bitbit:
-	if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
-		after_sgi_string(response);
+	size_t _dot = _path.find_last_of('.');
+	if (_dot != std::string::npos){
+		if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
+			after_sgi_string(response);
+		}
 	}
 		makeResponse(response, *this);
 	// _locations[_nbLocation].getDefaultFile()
@@ -322,6 +323,7 @@ bool	request::POSTRequest()
 		_path = pathTemp.substr(0, _path.find_last_of("/") + 1);
 		findLocations();
 	}
+	// std::cout << RED << "ATTENTION*********there is a seg-fault******** "<< this->_path << RESET << std::endl;
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false \
 		|| _locations[_nbLocation].getUploadEnabled() == false)
 		return errorHandler("405 Not Alowed");
@@ -333,6 +335,7 @@ bool	request::POSTRequest()
 	{
 		// std::cout << "***********************begin****************************<\n"GREEN << this->_bodyMessage << RESET"\n>*****************end********************" << std::endl;
 		std::string boundary = getBoundary(ContentType);
+
 		boundaryParser(boundary, _bodyMessage);
 		for (size_t i = 0; i < blockPost.size(); i++)
 		{
@@ -378,13 +381,19 @@ bool	request::POSTRequest()
 		resp._headers["Connection"] = "closed";
 	else
 		resp._headers["Connection"] = "keep-alive";
-	if (_path.find_last_of('.') != std::string::npos){
-		if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
-			after_sgi_string(resp);
-		};
+	
+	std::cout << RED << "ATTENTION*********there is a seg-fault******** "<< this->_path << RESET << std::endl;
+
+	try {
+		if (_path.find_last_of('.') != std::string::npos){
+			if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
+				after_sgi_string(resp);
+			};
+		}
+		makeResponse(resp, *this);
+	}catch (std::exception &e){
+
 	}
-	std::cout << RED << "ATTENTION*********there is a seg-fault********" << RESET << std::endl;
-	makeResponse(resp, *this);
 	return true;
 }
 
@@ -460,6 +469,8 @@ void	request::findLocations()
 		if (_path.find(_locations[i].getPath()) != std::string::npos)
 			LocationNum = i;
 	}
+	//TODO: fix this
+		// std::cout << "_path: " << LocationNum << std::endl;
 	_nbLocation = LocationNum;
 }
 
@@ -787,6 +798,27 @@ std::string upCase(std::string str){
 	return ret;
 }
 
+// bool	request::findInDir(){
+// 	DIR *dr;
+//     struct dirent *dir;
+// 	//EX: /user/ymarji/Desktop/webser/public/file.ext =>> root;
+// 	std::string	path = this->_path;
+// 	// name of file to delete =>> file.ext
+// 	std::string filename;
+// 	// directory to remove from =>> /user/ymarji/Desktop/webser/public/
+// 	std::string root;
+
+//     dr = opendir(".");
+//     if (dr)
+//     {
+//         while ((dir = readdir(dr)) != NULL)
+//         {
+//             printf("%s\n", dir->d_name);
+//         }
+//         closedir(dr);
+//     }
+// }
+
 void	request::after_sgi_string(response & response){
     std::string body;
 	std::string	data;
@@ -801,6 +833,9 @@ void	request::after_sgi_string(response & response){
 	for (int i = 0; i < this->_locations.size(); i++){
 		if (this->_locations[i].isCGI()){
 			if (this->_locations[i].getPath() == ext){
+				struct stat st;
+				if (stat(this->_locations[i].getFastCgiPass().c_str(), &st) == -1)
+					throw	std::runtime_error("500 Internl Server Error");
 				args.push_back(this->_locations[i].getFastCgiPass().c_str());
 				if (ext == ".py" || ext == ".php")
 					args.push_back(this->_path.c_str());
@@ -816,18 +851,17 @@ void	request::after_sgi_string(response & response){
         throw	std::runtime_error("FATAL: internal error, try again!");
 	
 	std::cout << RED << "*******************************************" << std::endl;
-	
 	while (args[i])
 	{
 		std::cout << args[i] << std::endl;
 		i++;
 	}
-
 	log "REQUEST_METHOD " << this->_reqMethod.c_str() line;
 	log "SCRIPT_FILENAME " << this->_path.c_str()line;
 	log "REQUEST_METHOD " << this->_data[_nbServer].getRootDir().c_str() line;
-
 	std::cout << "*******************************************" << RESET << std::endl;
+
+
 	setenv("SERVER_SOFTWARE", "WebServer/med&marji", 1);
 	setenv("GATEWAY_INTERFACE", "CGI/1.1",1);
 	setenv("SERVER_PROTOCOL", "HTTP/1.1",1);
@@ -836,7 +870,6 @@ void	request::after_sgi_string(response & response){
 	setenv("PATH_INFO", this->_data[_nbServer].getRootDir().c_str(), 1);
 	setenv("SERVER_PORT", std::to_string(this->_data[_nbServer].getPort()).c_str(), 1);
 	setenv("REDIRECT_STATUS", "0", 1);
-	setenv("CONTENT_TYPE", "application/x-www-form-urlencoded", 1);
 	for(std::multimap<std::string, std::string>::iterator i = this->_header.begin(); i != this->_header.end(); i++){
 		setenv( ("HTTP_" + upCase(i->first)).c_str(), (i->second).c_str(), 1);
 	}
@@ -844,8 +877,19 @@ void	request::after_sgi_string(response & response){
 		setenv("QUERY_STRING", this->_query.c_str(), 1);
 	}
 	else if (this->_reqMethod == "POST"){
-		data = getPostData();
-		setenv("CONTENT_LENGTH", std::to_string(data.length()).c_str() , 1);
+		std::multimap<std::string, std::string>::iterator it = this->_header.find("Content-Type");
+		if (it != this->_header.end()){
+			std::cout << GRN << it->second << std::endl line  << RESET line;
+			if (it->second == "application/x-www-form-urlencoded"){
+				setenv("CONTENT_TYPE", "application/x-www-form-urlencoded", 1);
+				data = this->_queryStr;
+			}
+			else if (it->second.find("multipart/form-data") != std::string::npos){
+				setenv("CONTENT_TYPE", it->second.c_str() , 1);
+				data = _bodyMessage;
+			}
+			setenv("CONTENT_LENGTH", std::to_string(data.length()).c_str() , 1);
+		}
 	}
 
     extern char **environ;
@@ -860,42 +904,52 @@ void	request::after_sgi_string(response & response){
         if (this->_reqMethod == "POST"){
 			if (dup2(Ipipe[0], 0) < 0){
 				std::cerr << "Error : CGI crash, try again -dup2 I -" << std::endl;
+				throw	std::runtime_error("500 Internl Server Error ");
 			}
 		}
 		close(Ipipe[0]);
 		if (dup2(Opipe[1], 1) < 0){
 			std::cerr << "Error : CGI crash, try again -dup2 O -" << std::endl;
+			throw	std::runtime_error("500 Internl Server Error");
 		}
 		dup2(Opipe[1], 1);
 		close(Opipe[1]);
         if (execve(args[0], const_cast<char *const *>(&args[0]), environ) < 0){
 			std::cerr << "Error : CGI crash, try again -execve-" << std::endl;
-			throw std::runtime_error(strerror(errno));
+			throw	std::runtime_error("500 Internl Server Error");
 		}
 		exit(EXIT_FAILURE);
     }
     else{
 		close(Opipe[1]);
 		close(Ipipe[0]);
-		int res =  ::write(Ipipe[1], data.c_str(),data.length());
+		if (this->_reqMethod != "GET"){
+			int res =  ::write(Ipipe[1], data.c_str(),data.length());
+			if (res < 0)
+				throw	std::runtime_error("500 Internl Server Error");
+		}
 		close(Ipipe[1]);
 		while ((res = read(Opipe[0], buff, sizeof(buff)))){
             body.append(buff, res);
 		}
 		wait(NULL);
-		char *header = ::strdup(body.substr(0, body.find("\n\r")).c_str());
-		char *token = ::strtok(header, "\n");
-		while (token != NULL)
-		{
+		try{
+			char *header = ::strdup(body.substr(0, body.find("\n\r")).c_str());
+			char *token = ::strtok(header, "\n");
+			while (token != NULL)
 			{
-				std::string stoken = token;
-				std::string key = stoken.substr(0, stoken.find(":"));
-				std::string value = stoken.substr(stoken.find(":") + 1);
-				response._headers[key] = value.substr(0, value.find_first_of('\r'));
+				{
+					std::string stoken = token;
+					std::string key = stoken.substr(0, stoken.find(":"));
+					std::string value = stoken.substr(stoken.find(":") + 1);
+					response._headers[key] = value.substr(0, value.find_first_of('\r'));
+				}
+				token = ::strtok(NULL, "\n");
 			}
-			token = ::strtok(NULL, "\n");
+			response._body = body.substr(body.find("\r\n\r\n") + 4);
+		}catch (std::exception &e){
+			throw	std::runtime_error("500 Internl Server Error");
 		}
-		response._body = body.substr(body.find("\r\n\r\n") + 4);
 		response._headers["Content-Length"] = std::to_string(response._body.size());
 		close(Opipe[0]);
     }

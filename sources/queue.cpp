@@ -1,5 +1,5 @@
 #include "../includes/Webserv.hpp"
-queue::queue(std::vector<ServerData> data):_contentSent(0),_contentLent(0),_isDone(true), _isChunked(false),_contentRead(0), _req(data){}
+queue::queue(std::vector<ServerData> data):_req(data),_contentLent(0),_contentSent(0),_contentRead(0),_isChunked(false),_isDone(false){}
 
 queue    queue::initQueueElm(int  fd, request req){
     this->_contentSent = 0;
@@ -7,6 +7,16 @@ queue    queue::initQueueElm(int  fd, request req){
     this->_fd = fd;
     this->_req = req;
     return (*this);
+}
+void    queue::reset(){
+
+    this->_isDone = false;
+    this->getReq().initialize();
+    this->setcontentSent(0);
+    this->_resString.clear();
+    this->setcontentRead(0);
+    this->_reqString.clear();
+    this->_isChunked = false;
 }
 
 int     HexToDec(std::string hexVal)
@@ -29,7 +39,6 @@ int     HexToDec(std::string hexVal)
         else
             break;
     }
-    // std::cout << hexVal << "  hex  " << dec_val << std::endl;
     return dec_val;
 }
 
@@ -67,10 +76,7 @@ void    queue::chunkParser(){
                 tmp = body.substr(0, cnt + 1);
                 if ((alter = isHex(tmp))){
                     tmp.pop_back();
-
                     cLent = HexToDec(tmp);
-                //     if (cLent == 0)
-                //         break ;
                     body.erase(0, cnt + 2);
                     newBody.append(body,0, cLent);
                     body.erase(0, cLent);
@@ -88,11 +94,10 @@ void    queue::chunkParser(){
 
 bool        queue::isBodyDone(){
     size_t  i = this->_reqString.find("\r\n\r\n");
-    // size_t body_size = std::max(_reqString.length() - (i + 4), this->_contentRead);
     size_t body_size = _reqString.length() - (i + 4);
-    // size_t body_size = this->_contentRead;
     std::cout << " bodd_size /////////////////" << body_size << std::endl;
-    if (_isDone == false && body_size < this->_contentLent){
+    //TODO: size_T countentleny
+    if (_isDone == false && body_size < static_cast<size_t>(this->_contentLent)){
         return false;
     }
     return true;
@@ -100,24 +105,25 @@ bool        queue::isBodyDone(){
 
 void     queue::reqCheack(){
     std::string req = this->_reqString;
-    size_t dmt = 0;
+    size_t cp = 0;
+    size_t headEnd = 0;
     size_t i = 0;
     size_t c_lent = 0;
 
-    dmt = req.find("\r\n\r\n");
-    if (dmt != std::string::npos){
-        dmt = req.find("Transfer-Encoding: chunked");
-        if( dmt != std::string::npos){
+    headEnd = req.find("\r\n\r\n");
+    if (headEnd != std::string::npos){
+        cp = req.find("Transfer-Encoding: chunked");
+        if( cp != std::string::npos){
             _isChunked = true;
-            dmt = req.find("0\r\n\r\n");
-            if ( dmt != std::string::npos ){
+            cp = req.find("0\r\n\r\n", headEnd);
+            if ( cp != std::string::npos ){
                 _isDone = true;
             }
             else
                 _isDone = false;
             return;
         }
-        if (!_isChunked && (i = req.find("Content-Length:")) != std::string::npos) {
+        else if (!_isChunked && (i = req.find("Content-Length:")) != std::string::npos) {
             c_lent = ::atoi(req.substr(req.find(":", i) + 1).c_str());
             std::cout << "c_lent /////////////////|" << c_lent<< "|" << std::endl;
             this->setcontentLent(c_lent);

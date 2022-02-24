@@ -9,12 +9,14 @@ class queue{
         int     _contentLent;
         int     _contentSent;
         size_t     _contentRead;
-        std::string _resString;
         bool        _isChunked;
     public:
+        std::string _resString;
         bool    _isDone;
         std::string _reqString;
         queue(std::vector<ServerData>);
+
+        void    reset();
         queue    initQueueElm(int  fd, request req);
         int     getFD() const;
         void     setFD(int fd);

@@ -2,7 +2,7 @@
 
 // IOhandler::IOhandler():_fdNum(0){};
 
-IOhandler::IOhandler(std::vector<ServerData>  data):_fdNum(0),_data(data) {
+IOhandler::IOhandler(std::vector<ServerData>  data):_data(data),_fdNum(0) {
         _addrlen = sizeof(_address);
         _outSize = 0;
 };
@@ -47,7 +47,6 @@ void    IOhandler::removeQueue(int fd){
 };
 bool   isReqDone(std::string req){
     std::string Content_Type;
-    bool        boundary;
     std::string boundaryString;
 
     size_t i = 0;
@@ -87,20 +86,18 @@ void    IOhandler::inputEvent(int fd, int index){
     }
     else{
         req_string = readReq(fd, &ret);
+
         if (ret > 0){
             if (req_string[0] != '\r' || req_string.length()){
                 (*this)[fd]->setcontentRead(ret);
                 if ((*this)[fd] == this->_reqQueue.end()){
                     (*this)[fd]->_reqString.append(req_string);
                 }else{
-                    if ((*this)[fd]->_isDone){
-                        (*this)[fd]->_isDone = false;
-                        (*this)[fd]->getReq().initialize();
-                        (*this)[fd]->setcontentSent(0);
-                        (*this)[fd]->setcontentRead(0);
-                        (*this)[fd]->_reqString.clear();
+                    if ((*this)[fd]->isDone()){
+                        (*this)[fd]->reset();
                     }
                     (*this)[fd]->_reqString.append(req_string);
+                    // std::cout << RED << "\e[1m" << (*this)[fd]->_reqString << RESET << std::endl;
                 }
             }
             _pollfd_list[index].events = POLLIN | POLLOUT;
@@ -109,7 +106,7 @@ void    IOhandler::inputEvent(int fd, int index){
 }
 
 std::vector<queue>::iterator   IOhandler::operator[](int n){
-    for (int i = 0; i < _reqQueue.size(); i++)
+    for (size_t i = 0; i < _reqQueue.size(); i++)
     {
         if (_reqQueue[i].getFD() == n)
             return _reqQueue.begin() + i;
@@ -121,6 +118,7 @@ void    IOhandler::outputEvent(int fd, int index){
     std::vector<queue>::iterator it = (*this)[fd];
     queue &current = *it;
 
+        std::cout << RED << "\e[1m" << current.isDone() << RESET << std::endl;
     if (!current.isDone())
         current.reqCheack();
     if (current.isDone()){
@@ -133,30 +131,34 @@ void    IOhandler::outputEvent(int fd, int index){
         int  reqSize = hello.size();
         int  reqSent = current.getReqSent();
         int sen = send(fd, hello.c_str() + reqSent, reqSize - reqSent, 0);
+            // TODO:  Rremove after error. and cheak for 0
         if (reqSent < reqSize){
             if (sen == -1){
+                _pollfd_list[index].revents = POLLHUP;
+                std::cout << "send";
                 throw Socketexeption(strerror(errno));
-                exit(0);
+                return ;
             }
             reqSent = current.updateReqSent(sen);
+            std::cout << GREEN <<" Response sent :" << reqSent << RESET << std::endl;
             if (reqSent < reqSize){
                 _pollfd_list[index].events = POLLOUT;
                 _pollfd_list[index].revents = 0;
                 return ;
             }
         }
-        std::cout << GREEN <<" Response sent " << RESET << std::endl;
-        if (current.getReq().getHeaderOf("Connection").first == false || (current.getReq().getHeaderOf("Connection").first == true && current.getReq().getHeaderOf("Connection").second->second == "close")){
+        std::cout << GREEN <<" Response sent :" << sen << RESET << std::endl;
+        // if (current.getReq().getHeaderOf("Connection").first == false || (current.getReq().getHeaderOf("Connection").first == true && current.getReq().getHeaderOf("Connection").second->second == "close")){
             this->deleteS(index);
             return;
-        }
+        // }
     }
     _pollfd_list[index].events = POLLIN;
     _pollfd_list[index].revents = 0;
 };
 
 void    IOhandler::deleteS(int index){
-    if (index < _pollfd_list.size()){
+    if (static_cast<size_t>(index) < _pollfd_list.size()){
         int fd = _pollfd_list[index].fd;
         close(fd);
         _pollfd_list.erase(_pollfd_list.begin() + index);
@@ -188,9 +190,11 @@ void    IOhandler::IOwatch(){
             }
             fd = _pollfd_list[i].fd;
             if (_pollfd_list[i].revents & POLLIN){
+                std::cout << "--------------- int" line;
                 inputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLOUT){
+                std::cout << "--------------- out" line;
                 outputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLHUP){
@@ -207,7 +211,6 @@ IOhandler::~IOhandler(){};
         int res = 0;
         int i = *n;
         *n = 0;
-        int temp;
         char buff[1024] = {0};
         bzero(buff,1024);
         std::string ret;
@@ -217,7 +220,10 @@ IOhandler::~IOhandler(){};
             *n = 0;
         }
         else if (res < 0){
+            this->deleteS(i);
+            // TODO:  Rremove after error
             *n = -1;
+            std::cout << "read Error";
             throw Socketexeption(strerror(errno));
         }
         else{

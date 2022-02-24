@@ -1,6 +1,6 @@
 #include "../includes/Webserv.hpp"
 
-    server::server(std::vector<ServerData> __data):_fdNum(0), _data(__data), req(__data), _queue(_data)
+    server::server(std::vector<ServerData> __data):_data(__data), req(__data), _queue(_data),_fdNum(0)
     {
         _addrlen = sizeof(_address);
     }
@@ -8,7 +8,7 @@
 
     void    server::initial_sockets(){
         std::vector<int> Ports;
-        for(int i = 0; i < _data.size();i++){
+        for(size_t i = 0; i < _data.size();i++){
             if (std::find(Ports.begin(),Ports.end(), _data[i].getPort()) != Ports.end())
                 continue ;
             _socket_list.push_back(__socket());
@@ -30,17 +30,16 @@
         int     ret = 0;
         struct pollfd   evPoll;
 
-        for (int i = 0; i != _socket_list.size(); i++)
+        for (size_t i = 0; i != _socket_list.size(); i++)
         {
             sockId = _socket_list[i].getsocket();
             if (sockId == -1)
                 continue ;
             master_fds.push_back(sockId);
             evPoll.fd = sockId;
-            evPoll.events = POLLIN;
+            evPoll.events = POLLIN | POLLOUT;
             evPoll.revents = 0;
             _pollfd_list.push_back(evPoll);
-
             _queue.addPollFd(evPoll);
             this->_fdNum++;
             ret++;
@@ -49,13 +48,7 @@
         return ret;
     };
     void    server::init(){
-        int     kq;
-        int     sockId;
-        int     n = 0;
-        int     rc;
-        int     new_socket;
         std::string req_string;
-        struct pollfd   evPoll;
 
         std::cout << GREEN << "\e[1m" << "Web Server Started" << RESET << std::endl;
         initial_sockets();

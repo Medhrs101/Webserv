@@ -8,3 +8,4 @@ webserv.conf
 ignore_*
 public
 webserv.conf
+Makefile
