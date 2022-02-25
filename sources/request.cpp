@@ -202,7 +202,6 @@ std::string contentType (std::string path)
 		return "text/plain";
 	else
 		return "text/plain";
-	// std::cout << "this is the path extension : " << extension << std::endl;
 	return extension;
 }
 
@@ -288,7 +287,7 @@ bool	request::GETRequest()
 				return errorHandler(ret);
 			response._body = _bodyMessage;
 			response._headers["Connection"] = "keep-alive";
-			// response._headers["Content-Type"] = "text/html";
+			response._headers["Content-Type"] = "text/html";
 			// if (response._body.empty())
 			// 	return errorHandler("500 internal Server Error");
 		
@@ -300,7 +299,7 @@ bool	request::GETRequest()
 		}
 	}
 	else
-		return errorHandler("404 Not Found1");
+		return errorHandler("404 Not Found");
 	if (response._body.empty() == true)
 	{
 		std::ostringstream streambuff;
@@ -315,7 +314,7 @@ bool	request::GETRequest()
 	}
 	response._statusLine = HTTPV1;
 	response._statusLine += " " + returnCode;
-	// response._headers["Content-Type"] = contentType(_path);
+	response._headers["Content-Type"] = contentType(_path);
 	response._headers["Content-Length"] = std::to_string(response._body.length());
 	if (_header.count("Connection") == 0 || _header.find("Connection")->second == "closed")
 		response._headers["Connection"] = "closed";
@@ -419,6 +418,7 @@ bool	request::POSTRequest()
 	std::string	ContentType = (_header.find("Content-Type") == _header.end() ? "none" : _header.find("Content-Type")->second);
 
 	std::cout << "uploadPath: ||" << ContentType << std::endl;
+
 	if (ContentType.find("multipart/form-data") != std::string::npos)
 	{
 		// std::cout << "***********************begin****************************<\n"GREEN << this->_bodyMessage << RESET"\n>*****************end********************" << std::endl;
@@ -456,8 +456,6 @@ bool	request::POSTRequest()
 		// errorHandler("500 Tkays a chabab mzl ma sowebna hadi");
 		// return ;
 	}
-	else if(ContentType == "none")
-	{}
 	else
 		return errorHandler("415 Unsupported Media Type");
 	resp._statusLine = HTTPV1;
@@ -527,7 +525,6 @@ bool	request::DELETERequest()
 		// std::cout << "path: |" << _data[_nbServer].getRootDir() << std::endl;
 		// std::cout << RED <<  std::boolalpha <<  << RESET << std::endl;
 		//TODO: test delete
-
 		if (!findInDir(_path, root))
 			return errorHandler("403 Forbidden");
 		if (!(info.st_mode & S_IRUSR) || !(info.st_mode & S_IWUSR))
