@@ -168,12 +168,38 @@ void	makeResponse(response & response, request & req)
 std::string contentType (std::string path)
 {
 	std::string	extension = path.substr(path.find(".") + 1, path.length() - path.find("."));
-	if (extension == "html")
+	if (extension == "html" || extension == "htm")
 		return "text/html";
-	else if (extension == "png" || extension == "ico")
-		return "image/png";
 	else if (extension == "mp4")
 		return "video/mp4";
+	else if (extension == "aac")
+		return "audio/aac";
+	else if (extension == "css")
+		return "text/css";
+	else if (extension == "gif")
+		return "image/gif";	
+	else if (extension == "ico")
+		return "image/vnd.microsoft.icon";
+	if (extension == "jpg" || extension == "jpeg")
+		return "image/jpeg";
+	else if (extension == "js")
+		return "text/javascript";
+	else if (extension == "json")
+		return "application/json";
+	else if (extension == "mp3")
+		return "audio/mpeg";
+	else if (extension == "mp4")
+		return "video/mp4";
+	else if (extension == "png")
+		return "image/png";
+	else if (extension == "pdf")
+		return "application/pdf";
+	else if (extension == "php")
+		return "application/x-httpd-php";
+	else if (extension == "sh")
+		return "application/x-sh";
+	else if (extension == "txt")
+		return "text/plain";
 	else
 		return "text/plain";
 	// std::cout << "this is the path extension : " << extension << std::endl;
@@ -381,17 +407,15 @@ bool	request::POSTRequest()
 	}
 	else
 		return errorHandler ("404 Not Found");
-	// if (_locations[_nbLocation].isCGI())
-	// {
-	// 	pathTemp = _path;
-	// 	_path = pathTemp.substr(0, _path.find_last_of("/") + 1);
-	// 	findLocations();
-	// }
 	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false \
 		|| _locations[_nbLocation].getUploadEnabled() == false)
 		return errorHandler("405 Not Alowed");
 	std::string	uploadpath = _locations[_nbLocation].getUploadLocation();
-	uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
+	if (_locations[_nbLocation].getRootDir().empty())
+		uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
+	else
+		uploadpath = _locations[_nbLocation].getRootDir() + uploadpath + "/";
+	// uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
 	std::string	ContentType = (_header.find("Content-Type") == _header.end() ? "none" : _header.find("Content-Type")->second);
 
 	std::cout << "uploadPath: ||" << ContentType << std::endl;
@@ -446,7 +470,7 @@ bool	request::POSTRequest()
 	else
 		resp._headers["Connection"] = "keep-alive";
 	
-	std::cout << RED << "ATTENTION*********there is a seg-fault******** "<< this->_path << RESET << std::endl;
+	// std::cout << RED << "ATTENTION*********there is a seg-fault******** "<< this->_path << RESET << std::endl;
 
 	try {
 		if (_path.find_last_of('.') != std::string::npos){
@@ -497,7 +521,7 @@ bool	request::DELETERequest()
 		root = _locations[_nbLocation].getRootDir();
 	_path = root + _path;
 	pathCorrection(_path);
-	std::cout << RED << "DELETE PATH: |" << _path << RESET << std::endl; 
+	std::cout << RED << "DELETE PATH: |" << _path << RESET << std::endl;
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		// std::cout << "path: |" << _data[_nbServer].getRootDir() << std::endl;
@@ -506,13 +530,13 @@ bool	request::DELETERequest()
 
 		if (!findInDir(_path, root))
 			return errorHandler("403 Forbidden");
-		if (!(info.st_mode & S_IRUSR) || !(info.st_mode & S_IWUSR) || !(info.st_mode & S_IXUSR))
+		if (!(info.st_mode & S_IRUSR) || !(info.st_mode & S_IWUSR))
 			return errorHandler("403 Forbidden");
 		std::cout << "path: |" << _path << std::endl;
 		if (_path.find(_data[_nbServer].getRootDir()) != std::string::npos)
 		{
 			if (remove(_path.c_str()) != 0)
-				return errorHandler("500 Internal Server Error");
+				return errorHandler("403 Forbidden");
 		}
 			
 	}
@@ -843,7 +867,7 @@ bool	request::errorHandler(std::string	msgError)
 		}
 		else
 		{
-			msgError = "500 internal Server Error";
+			// msgError = "500 internal Server Error";
 			fillError(errorRsp, msgError);
 		}
 	}
