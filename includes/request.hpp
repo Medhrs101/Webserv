@@ -68,7 +68,6 @@ public:
 	std::pair<bool, std::map<std::string, std::string>::const_iterator> getHeaderOf(std::string req) const;
 	std::string	getPostData();
 	bool	after_sgi_string(response & response);
-	// bu Youssef initialize variable after im done;
 
 	void		initialize(void);
 	void		requestParser(std::string req);

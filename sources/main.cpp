@@ -25,7 +25,6 @@ int main(int ac, char **av)
 		rootVer(parser.getServers());
 		server Server(parser.getServers());
         Server.init();
-
 	}
 	catch (std::exception &e)
 	{

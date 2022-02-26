@@ -40,4 +40,4 @@
     int const &__socket::getsocket() const{
         return _sockFD;
     };
-    __socket::~__socket(){};  
+    __socket::~__socket(){};

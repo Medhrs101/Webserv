@@ -44,7 +44,7 @@ void    request::requestParser(std::string req)
 {
 	std::string	ret;
 	_reqstr = req;
-	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)

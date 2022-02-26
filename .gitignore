@@ -1,8 +1,6 @@
 .vscode
 .DS_*
 a.out
-example_ibm.c
 outputParser
 webserv_logs
 ignore_*
-Makefile
