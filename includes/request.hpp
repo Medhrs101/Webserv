@@ -31,10 +31,7 @@ typedef struct	t_blockPost
 	std::string key;
 	std::string filename;
 	std::string value;
-	t_blockPost()
-	{
-		
-	}
+	t_blockPost(){};
 }				s_blockPost;
 
 
@@ -142,12 +139,12 @@ public:
 		public:
 			ErrorException(const char *message);
 	};
-
-	void	after_sgi_string(response & response);
+	bool	after_sgi_string(response & response);
 	std::string	getPostData();
 	//Methods for debuging It will be deleted later
 	void	printReqData();
 };
 
+bool    findInDir(std::string & path, std::string & root);
 
 #endif

@@ -6,6 +6,5 @@ outputParser
 webserv_logs
 webserv.conf
 ignore_*
-public
 webserv.conf
 Makefile

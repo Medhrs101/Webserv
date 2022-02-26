@@ -73,13 +73,12 @@ void    IOhandler::inputEvent(int fd, int index){
         new_socket = accept(fd, (struct sockaddr *) &_address, (socklen_t *) &_addrlen);
         if (new_socket < 0){
             std::cerr << RED <<  "Cant accept Connection :" << inet_ntoa(_address.sin_addr) << strerror(errno) << RESET << std::endl;
-            exit(0);
             return ;
         }
         fcntl(new_socket, F_SETFL, O_NONBLOCK);
         std::cout << GRN << "\e[1m" <<  "✔ NEW connection from " << inet_ntoa(_address.sin_addr) << RESET << std::endl;
         evPoll.fd = new_socket;
-        evPoll.events = POLLIN;
+        evPoll.events = POLLIN | POLLOUT;
         evPoll.revents = 0;
         _pollfd_list.push_back(evPoll);
         this->newElem(new_socket);
@@ -91,14 +90,11 @@ void    IOhandler::inputEvent(int fd, int index){
         if (ret > 0){
             if (req_string[0] != '\r' || req_string.length()){
                 (*this)[fd]->setcontentRead(ret);
-                if ((*this)[fd] == this->_reqQueue.end()){
-                    (*this)[fd]->_reqString.append(req_string);
-                }else{
+                {
                     if ((*this)[fd]->isDone()){
                         (*this)[fd]->reset();
                     }
                     (*this)[fd]->_reqString.append(req_string);
-                    // std::cout << RED << "\e[1m" << (*this)[fd]->_reqString << RESET << std::endl;
                 }
             }
             _pollfd_list[index].events = POLLIN | POLLOUT;
@@ -119,7 +115,6 @@ void    IOhandler::outputEvent(int fd, int index){
     std::vector<queue>::iterator it = (*this)[fd];
     queue &current = *it;
 
-        std::cout << RED << "\e[1m" << current.isDone() << RESET << std::endl;
     if (!current.isDone())
         current.reqCheack();
     if (current.isDone()){
@@ -131,24 +126,19 @@ void    IOhandler::outputEvent(int fd, int index){
         const std::string hello = current.getResponse();
         int  reqSize = hello.size();
         int  reqSent = current.getReqSent();
-        int sen = send(fd, hello.c_str() + reqSent, reqSize - reqSent, 0);
-            // TODO:  Rremove after error. and cheak for 0
-        if (reqSent < reqSize){
-            if (sen == -1){
-                _pollfd_list[index].revents = POLLHUP;
-                std::cout << "send";
-                throw Socketexeption(strerror(errno));
+        int sen = send(fd, hello.c_str() + current.getReqSent(), reqSize - current.getReqSent(), 0);
+        if (sen == 0)
                 return ;
-            }
-            reqSent = current.updateReqSent(sen);
-            std::cout << GREEN <<" Response sent :" << reqSent << RESET << std::endl;
-            if (reqSent < reqSize){
-                _pollfd_list[index].events = POLLOUT;
-                _pollfd_list[index].revents = 0;
-                return ;
-            }
+        if (sen == -1){
+            _pollfd_list[index].revents = POLLHUP;
+            throw Socketexeption(strerror(errno));
+            return ;
         }
-        std::cout << GREEN <<" Response sent :" << sen << RESET << std::endl;
+        reqSent = current.updateReqSent(sen);
+        if (current.getReqSent() < reqSize){
+            return ;
+        }
+        std::cout << GREEN << "/e[1m<<" << " Response sent :" << sen << RESET << std::endl;
         if (current.getReq().getHeaderOf("Connection").first == false || (current.getReq().getHeaderOf("Connection").first == true && current.getReq().getHeaderOf("Connection").second->second == "close")){
             this->deleteS(index);
             return;
@@ -181,7 +171,7 @@ void    IOhandler::IOwatch(){
             std::cerr << "FATAL error -poll-: " << strerror(errno);
         }
         size = _fdNum;
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < _pollfd_list.size(); i++)
         {
             if (_pollfd_list[i].revents == 0)
                 continue ;
@@ -191,11 +181,9 @@ void    IOhandler::IOwatch(){
             }
             fd = _pollfd_list[i].fd;
             if (_pollfd_list[i].revents & POLLIN){
-                std::cout << "--------------- int" line;
                 inputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLOUT){
-                std::cout << "--------------- out" line;
                 outputEvent(fd, i);
             }
             if (_pollfd_list[i].revents & POLLHUP){
@@ -224,9 +212,7 @@ IOhandler::~IOhandler(){};
             this->deleteS(i);
             // TODO:  Rremove after error
             *n = -1;
-            std::cout << "read Error";
-            exit(0);
-            throw Socketexeption(strerror(errno));
+            std::cout << BLU << "\e[1m" << "read Error";
         }
         else{
             ret.append(buff, res);

@@ -1,0 +1,10 @@
+<div class="articleadmin">
+    <h1>Formulaire d'ajout d'article</h1>
+    <form method="POST" action="/form/upload.php" enctype="multipart/form-data" style="text-align: center;">
+    <label for="titrenew" style="display:block;padding:5px;font-family:'Aril';font-weight:lighter;color:#662d17;font-size:18px;">Titre</label> <input type="text" name="titrenew" id="titrenew">
+    <label for="messagenew">Texte</label> <textarea cols="70" rows="7" name="messagenew" id="messagenew"></textarea>
+    <input type="hidden" name="MAX_FILE_SIZE" value="2097152">
+    <input type="file" name="photosnew" style="padding:10px;">
+    <p style="padding:17px;">L'image que vous envoyez doit avoir une taille maximal de 3Mo. Les formats acceptés sont : (JPG;JPEG,PNG)</p>
+    <input type="submit" value="Envoyer">
+</div>

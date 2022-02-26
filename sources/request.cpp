@@ -62,7 +62,7 @@ void    request::requestParser(std::string req)
 {
 	std::string	ret;
 	_reqstr = req;
-	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -167,7 +167,7 @@ void	makeResponse(response & response, request & req)
 
 std::string contentType (std::string path)
 {
-	std::string	extension = path.substr(path.find(".") + 1, path.length() - path.find("."));
+	std::string	extension = path.substr(path.find_last_of(".") + 1, path.length() - path.find_last_of("."));
 	if (extension == "html" || extension == "htm")
 		return "text/html";
 	else if (extension == "mp4")
@@ -238,7 +238,10 @@ std::string	request::autoIndexGenerator(std::string path)
     while ((dp = readdir (dir)) != NULL)
 	{
 		_bodyMessage += "<a href=\"";
-		_bodyMessage += dp->d_name;
+		if(_reqUri[_reqUri.length() - 1] == '/')
+			_bodyMessage += (_reqUri + dp->d_name);
+		else
+			_bodyMessage += (_reqUri + "/" + dp->d_name);
 		_bodyMessage += "\">";
 		_bodyMessage += dp->d_name;
 		_bodyMessage += "</a>\n";
@@ -259,7 +262,7 @@ bool	request::GETRequest()
 	std::string		returnCode = " 200 OK";
 	std::string		errorMessage;
 	struct stat		info;
-
+	std::string		root;
 	if (_locations[_nbLocation].isRedirection())
 	{
 		returnCode = std::to_string(_locations[_nbLocation].getReturnCode());
@@ -271,11 +274,13 @@ bool	request::GETRequest()
 	if (_locations[_nbLocation].getAllowedMethods().find("GET")->second == false)
 		return errorHandler("405 Not Allowed");
 	if (_locations[_nbLocation].getRootDir().empty())
-		_path = _data[_nbServer].getRootDir() + _path;
+		root = _data[_nbServer].getRootDir();
 	else
-		_path = _locations[_nbLocation].getRootDir() + _path;
+		root = _locations[_nbLocation].getRootDir();
+	_path = root + _path;
 	pathCorrection(_path);
-	std::cout << "PATH: |" << _path << std::endl;
+	if (!findInDir(_path, root))
+			return errorHandler("403 Forbidden0");
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		if (access(_path.c_str(), R_OK))
@@ -310,7 +315,7 @@ bool	request::GETRequest()
 			file.close();
 		}
 		else
-			return errorHandler("500 internal Server Error");
+			return errorHandler("403 Forbidden");
 	}
 	response._statusLine = HTTPV1;
 	response._statusLine += " " + returnCode;
@@ -324,7 +329,9 @@ bool	request::GETRequest()
 	size_t _dot = _path.find_last_of('.');
 	if (_dot != std::string::npos){
 		if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
-			after_sgi_string(response);
+			// after_sgi_string(response);
+			if (after_sgi_string(response) == false)
+				return errorHandler("500 internal Server Error");
 		}
 	}
 		makeResponse(response, *this);
@@ -365,7 +372,6 @@ void	request::boundaryParser(std::string boundary, std::string str)
         x = content.find("name=\"") + 6;
         while (content[x] != '\"')
             block.key += content[x++];
-		// std::cout << "filename: " <<block.filename << std::endl;
         size_t y = x;
 		if ((y = content.find("filename=\"")) != std::string::npos)
         {
@@ -375,6 +381,9 @@ void	request::boundaryParser(std::string boundary, std::string str)
                 block.filename += content[y++];
             x = y;
         }
+		// if (block.filename.empty())
+		// 	block.isFile = false;
+		// std::cout << "filename: " <<block.filename.empty() << std::endl;
         x = content.find("\r\n\r\n", x) + 4;
         size_t len = content.length() - 2;
         while(x < len)
@@ -394,11 +403,13 @@ bool	request::POSTRequest()
 	struct stat info;
 	blockPost.clear();
 	_queryStr.clear();
-
+	std::string		root;
 	if (_locations[_nbLocation].getRootDir().empty())
-		_path = _data[_nbServer].getRootDir() + _path;
+		root = _data[_nbServer].getRootDir();
 	else
-		_path = _locations[_nbLocation].getRootDir() + _path;
+		root = _locations[_nbLocation].getRootDir();
+	_path = root + _path;
+	findInDir(_path, root);
 	if (stat(_path.c_str(), &info) == 0)
 	{
 		if (access(_path.c_str(), R_OK))
@@ -417,7 +428,7 @@ bool	request::POSTRequest()
 	// uploadpath = _data[_nbServer].getRootDir() + uploadpath + "/";
 	std::string	ContentType = (_header.find("Content-Type") == _header.end() ? "none" : _header.find("Content-Type")->second);
 
-	std::cout << "uploadPath: ||" << ContentType << std::endl;
+	// std::cout << "uploadPath: ||" << ContentType << std::endl;
 
 	if (ContentType.find("multipart/form-data") != std::string::npos)
 	{
@@ -430,16 +441,18 @@ bool	request::POSTRequest()
 			// std::cout << MAG <<"fileeeeeeee: |"<< blockPost[i].isFile << "|" << RESET << std::endl;
 			if (blockPost[i].isFile)
 			{
-				blockPost[i].filename = uploadpath +  blockPost[i].filename;
-				output.open(blockPost[i].filename);
-				pathCorrection(blockPost[i].filename);
-				if (output.is_open())
-				{
-					output << blockPost[i].value;
-					output.close();
+				if (blockPost[i].filename != ""){
+					blockPost[i].filename = uploadpath +  blockPost[i].filename;
+					output.open(blockPost[i].filename);
+					pathCorrection(blockPost[i].filename);
+					if (output.is_open())
+					{
+						output << blockPost[i].value;
+						output.close();
+					}
+					else
+						return errorHandler("500 internal Server Error pew");
 				}
-				else
-					return errorHandler("500 internal Server Error pew");
 			}
 		}
 	}
@@ -470,16 +483,14 @@ bool	request::POSTRequest()
 	
 	// std::cout << RED << "ATTENTION*********there is a seg-fault******** "<< this->_path << RESET << std::endl;
 
-	try {
-		if (_path.find_last_of('.') != std::string::npos){
-			if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
-				after_sgi_string(resp);
-			};
-		}
-		makeResponse(resp, *this);
-	}catch (std::exception &e){
-
+	if (_path.find_last_of('.') != std::string::npos){
+		if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
+			// after_sgi_string(resp);
+			if (after_sgi_string(resp) == false)
+				return errorHandler("500 internal Server Error");
+		};
 	}
+		makeResponse(resp, *this);
 	return true;
 }
 
@@ -496,9 +507,14 @@ bool    findInDir(std::string & path, std::string & root){
     DIR *dr;
     struct dirent *dir;
     char rpath[PATH_MAX];
+    char roott[PATH_MAX];
 
+	realpath(root.c_str(),roott);
+	root.clear();
+	root = roott;
     realpath(path.c_str(), rpath);
-    std::cout << rpath << std::endl;
+	path.clear();
+	path = rpath;
     size_t cp = std::string(rpath).find(root);
     if (cp != std::string::npos)
         return true;
@@ -511,7 +527,7 @@ bool	request::DELETERequest()
 	struct stat info;
 	
 	std::string root;
-	if (_locations[_nbLocation].getAllowedMethods().find("POST")->second == false)
+	if (_locations[_nbLocation].getAllowedMethods().find("DELETE")->second == false)
 		return errorHandler ("405 Not Allowed");
 	if (_locations[_nbLocation].getRootDir().empty())
 		root = _data[_nbServer].getRootDir();
@@ -522,9 +538,6 @@ bool	request::DELETERequest()
 	std::cout << RED << "DELETE PATH: |" << _path << RESET << std::endl;
 	if (stat(_path.c_str(), &info) == 0)
 	{
-		// std::cout << "path: |" << _data[_nbServer].getRootDir() << std::endl;
-		// std::cout << RED <<  std::boolalpha <<  << RESET << std::endl;
-		//TODO: test delete
 		if (!findInDir(_path, root))
 			return errorHandler("403 Forbidden");
 		if (!(info.st_mode & S_IRUSR) || !(info.st_mode & S_IWUSR))
@@ -535,7 +548,6 @@ bool	request::DELETERequest()
 			if (remove(_path.c_str()) != 0)
 				return errorHandler("403 Forbidden");
 		}
-			
 	}
 	else
 		return errorHandler("404 Not Found");
@@ -934,7 +946,7 @@ std::string upCase(std::string str){
 //     }
 // }
 
-void	request::after_sgi_string(response & response){
+bool	request::after_sgi_string(response & response){
     std::string body;
 	std::string	data;
 	char	buff[1024] = {0};
@@ -949,8 +961,9 @@ void	request::after_sgi_string(response & response){
 		if (this->_locations[i].isCGI()){
 			if (this->_locations[i].getPath() == ext){
 				struct stat st;
-				if (stat(this->_locations[i].getFastCgiPass().c_str(), &st) == -1)
-					throw	std::runtime_error("500 Internl Server Error");
+				if (stat(this->_locations[i].getFastCgiPass().c_str(), &st) == -1){
+					return false;
+				}
 				args.push_back(this->_locations[i].getFastCgiPass().c_str());
 				if (ext == ".py" || ext == ".php")
 					args.push_back(this->_path.c_str());
@@ -961,22 +974,9 @@ void	request::after_sgi_string(response & response){
 	}
 	int i = 0;
     if (pipe(Opipe) < 0)
-        throw	std::runtime_error("FATAL: internal error, try again!");
+        return false;
 	if (pipe(Ipipe) < 0)
-        throw	std::runtime_error("FATAL: internal error, try again!");
-	
-	std::cout << RED << "*******************************************" << std::endl;
-	while (args[i])
-	{
-		std::cout << args[i] << std::endl;
-		i++;
-	}
-	log "REQUEST_METHOD " << this->_reqMethod.c_str() line;
-	log "SCRIPT_FILENAME " << this->_path.c_str()line;
-	log "REQUEST_METHOD " << this->_data[_nbServer].getRootDir().c_str() line;
-	std::cout << "*******************************************" << RESET << std::endl;
-
-
+		return false;
 	setenv("SERVER_SOFTWARE", "WebServer/med&marji", 1);
 	setenv("GATEWAY_INTERFACE", "CGI/1.1",1);
 	setenv("SERVER_PROTOCOL", "HTTP/1.1",1);
@@ -990,6 +990,7 @@ void	request::after_sgi_string(response & response){
 	}
 	if (this->_reqMethod == "GET"){
 		setenv("QUERY_STRING", this->_query.c_str(), 1);
+		setenv("CONTENT_LENGTH", std::to_string(_query.length()).c_str() , 1);
 	}
 	else if (this->_reqMethod == "POST"){
 		std::multimap<std::string, std::string>::iterator it = this->_header.find("Content-Type");
@@ -1010,28 +1011,27 @@ void	request::after_sgi_string(response & response){
     extern char **environ;
 	int IN_FD = dup(0);
 	int OUT_FD = dup(1);
+		std::cout << RED << "fork" << RESET << std::endl;
+
     pid = fork();
     if (pid < 0) 
-        throw std::runtime_error("FATAL: internal error, try again!");
+        return false;
     else if (pid == 0){
         close(Opipe[0]);
 		close(Ipipe[1]);
         if (this->_reqMethod == "POST"){
 			if (dup2(Ipipe[0], 0) < 0){
 				std::cerr << "Error : CGI crash, try again -dup2 I -" << std::endl;
-				throw	std::runtime_error("500 Internl Server Error ");
 			}
 		}
 		close(Ipipe[0]);
 		if (dup2(Opipe[1], 1) < 0){
 			std::cerr << "Error : CGI crash, try again -dup2 O -" << std::endl;
-			throw	std::runtime_error("500 Internl Server Error");
 		}
 		dup2(Opipe[1], 1);
 		close(Opipe[1]);
         if (execve(args[0], const_cast<char *const *>(&args[0]), environ) < 0){
-			std::cerr << "Error : CGI crash, try again -execve-" << std::endl;
-			throw	std::runtime_error("500 Internl Server Error");
+			std::cerr << RED << "Error : CGI crash, try again -execve-" << RESET << std::endl;
 		}
 		exit(EXIT_FAILURE);
     }
@@ -1041,10 +1041,13 @@ void	request::after_sgi_string(response & response){
 		if (this->_reqMethod != "GET"){
 			int res =  ::write(Ipipe[1], data.c_str(),data.length());
 			if (res < 0)
-				throw	std::runtime_error("500 Internl Server Error");
+				return false;
 		}
 		close(Ipipe[1]);
+		std::cout << RED << "wait" << RESET << std::endl;
 		while ((res = read(Opipe[0], buff, sizeof(buff)))){
+			// if (res < 0)
+			// 	return false;
             body.append(buff, res);
 		}
 		wait(NULL);
@@ -1063,9 +1066,11 @@ void	request::after_sgi_string(response & response){
 			}
 			response._body = body.substr(body.find("\r\n\r\n") + 4);
 		}catch (std::exception &e){
-			throw	std::runtime_error("500 Internl Server Error");
+			return false;
 		}
+		std::cout << RED << "after catch" << RESET << std::endl;
 		response._headers["Content-Length"] = std::to_string(response._body.size());
 		close(Opipe[0]);
     }
+	return true;
 }
