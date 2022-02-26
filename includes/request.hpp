@@ -19,6 +19,7 @@ class response
 public:
 	std::string	_statusLine;
 	std::map<std::string, std::string> _headers;
+	std::multimap<std::string, std::string> 	_cookie;
 	std::string	_body;
 public:
 	response() {}

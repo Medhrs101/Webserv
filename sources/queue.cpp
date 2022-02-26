@@ -145,6 +145,13 @@ void    queue::parseReq(){
     this->_resString = this->_req.getResponse();
 }
 
+void    queue::appendReq(std::string &str){
+    this->_reqString.append(str);
+}
+
+std::string			&queue::getReqString(){
+    return this->_reqString;
+}
 void     queue::setFD(int fd){
     this->_fd = fd;
 }

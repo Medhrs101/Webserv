@@ -150,7 +150,17 @@ void	makeResponse(response & response, request & req)
 		respStr += it->second;
 		respStr += CRLF;
 	}
-	respStr += "Server: WebServer/med&marji";
+	if (!response._cookie.empty())
+	{
+		for (std::multimap<std::string, std::string>::iterator it = response._cookie.begin(); it != response._cookie.end(); it++)
+		{
+			respStr += it->first;
+			respStr += ": ";
+			respStr += it->second;
+			respStr += CRLF;
+		}
+	}
+	respStr += "Server: WebServer/Med&Marji&Omar";
 	respStr += CRLF;
 	time_t now   = time(0);
 	struct tm tm = *gmtime(&now);
@@ -990,7 +1000,7 @@ bool	request::after_sgi_string(response & response){
 	}
 	if (this->_reqMethod == "GET"){
 		setenv("QUERY_STRING", this->_query.c_str(), 1);
-		setenv("CONTENT_LENGTH", std::to_string(_query.length()).c_str() , 1);
+		setenv("CONTENT_LENGTH", "0" , 1);
 	}
 	else if (this->_reqMethod == "POST"){
 		std::multimap<std::string, std::string>::iterator it = this->_header.find("Content-Type");
@@ -1006,6 +1016,10 @@ bool	request::after_sgi_string(response & response){
 			}
 			setenv("CONTENT_LENGTH", std::to_string(data.length()).c_str() , 1);
 		}
+	}
+	std::multimap<std::string, std::string>::iterator cookiestring = this->_header.find("Cookie");
+	if(cookiestring != this->_header.end()){
+		setenv("HTTP_COOKIE", cookiestring->second.c_str(), 1);
 	}
 
     extern char **environ;
@@ -1060,7 +1074,12 @@ bool	request::after_sgi_string(response & response){
 					std::string stoken = token;
 					std::string key = stoken.substr(0, stoken.find(":"));
 					std::string value = stoken.substr(stoken.find(":") + 1);
-					response._headers[key] = value.substr(0, value.find_first_of('\r'));
+					if(key != "Set-Cookie")
+						response._headers[key] = value.substr(0, value.find_first_of('\r'));
+					else
+					{
+						response._cookie.insert(std::make_pair(key, value.substr(0, value.find_first_of('\r'))));
+					}
 				}
 				token = ::strtok(NULL, "\n");
 			}
@@ -1069,6 +1088,7 @@ bool	request::after_sgi_string(response & response){
 			return false;
 		}
 		std::cout << RED << "after catch" << RESET << std::endl;
+		std::cout << RED << body << RESET << std::endl;
 		response._headers["Content-Length"] = std::to_string(response._body.size());
 		close(Opipe[0]);
     }

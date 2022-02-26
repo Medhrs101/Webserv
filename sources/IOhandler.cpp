@@ -22,7 +22,7 @@ void    IOhandler::set_masterFdlist(std::vector<int> &list){
 void    IOhandler::addToQueue(queue elm){
     for (size_t i = 0; i < _reqQueue.size(); i++)
     {
-        if (_reqQueue[i].getFD() == elm.getFD() && _reqQueue[i]._isDone){
+        if (_reqQueue[i].getFD() == elm.getFD() && _reqQueue[i].isDone()){
             _reqQueue[i].getReq().initialize();
             _reqQueue[i].initQueueElm(elm.getFD(), elm.getReq());
             return ;
@@ -94,7 +94,7 @@ void    IOhandler::inputEvent(int fd, int index){
                     if ((*this)[fd]->isDone()){
                         (*this)[fd]->reset();
                     }
-                    (*this)[fd]->_reqString.append(req_string);
+                    (*this)[fd]->appendReq(req_string);
                 }
             }
             _pollfd_list[index].events = POLLIN | POLLOUT;
@@ -131,7 +131,7 @@ void    IOhandler::outputEvent(int fd, int index){
                 return ;
         if (sen == -1){
             _pollfd_list[index].revents = POLLHUP;
-            throw Socketexeption(strerror(errno));
+            // throw Socketexeption(strerror(errno));
             return ;
         }
         reqSent = current.updateReqSent(sen);
@@ -179,6 +179,7 @@ void    IOhandler::IOwatch(){
                 this->deleteS(i);
                 continue ;
             }
+            std::cout << BLU << _pollfd_list.size() << RESET << std::endl;
             fd = _pollfd_list[i].fd;
             if (_pollfd_list[i].revents & POLLIN){
                 inputEvent(fd, i);
@@ -210,7 +211,6 @@ IOhandler::~IOhandler(){};
         }
         else if (res < 0){
             this->deleteS(i);
-            // TODO:  Rremove after error
             *n = -1;
             std::cout << BLU << "\e[1m" << "read Error";
         }

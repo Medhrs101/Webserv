@@ -10,32 +10,36 @@ class queue{
         int     _contentSent;
         size_t     _contentRead;
         bool        _isChunked;
-    public:
-        std::string _resString;
         bool    _isDone;
+        std::string _resString;
         std::string _reqString;
+    public:
         queue(std::vector<ServerData>);
-
         void    reset();
         queue    initQueueElm(int  fd, request req);
-        int     getFD() const;
-        void     setFD(int fd);
-        request     &getReq();
-        int         getcontentLent() const;
-        size_t         getcontentRead() const;
-        void         setcontentLent(int );
-        void         setcontentRead(size_t );
-        int         &getReqSent();
-        const std::string &getResponse() const;
-        int        updateReqSent(int size);
-        bool        isBodyDone();
-        void    parseReq();
-        void    setReq(request &_req);
-        void     reqCheack();
+        
+        void    reqCheack();
         bool    isChunked(void);
         bool    isDone(void);
         void    chunkParser();
+
         void    setcontentSent(int size);
+        void	setcontentLent(int );
+        void	setcontentRead(size_t );
+
+        const std::string	&getResponse() const;
+		std::string			&getReqString();
+		void    appendReq(std::string &str);
+        request &getReq();
+        int     getFD() const;
+        void    setFD(int fd);
+        int     getcontentLent() const;
+        size_t	getcontentRead() const;
+        int		&getReqSent();
+        int		updateReqSent(int size);
+        bool	isBodyDone();
+        void    parseReq();
+        void    setReq(request &_req);
         ~queue();
 };
 
