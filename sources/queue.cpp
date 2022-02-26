@@ -95,8 +95,6 @@ void    queue::chunkParser(){
 bool        queue::isBodyDone(){
     size_t  i = this->_reqString.find("\r\n\r\n");
     size_t body_size = _reqString.length() - (i + 4);
-    std::cout << " bodd_size /////////////////" << body_size << std::endl;
-    //TODO: size_T countentleny
     if (_isDone == false && body_size < static_cast<size_t>(this->_contentLent)){
         return false;
     }
@@ -125,18 +123,17 @@ void     queue::reqCheack(){
         }
         else if (!_isChunked && (i = req.find("Content-Length:")) != std::string::npos) {
             c_lent = ::atoi(req.substr(req.find(":", i) + 1).c_str());
-            std::cout << "c_lent /////////////////|" << c_lent<< "|" << std::endl;
             this->setcontentLent(c_lent);
             _isDone = isBodyDone();
             return ;
         }
         else{
-            _isDone = 1;
+            _isDone = true;
             return ;
         }
     }
     else{
-        _isDone = 0;
+        _isDone = false;
     }
 }
 

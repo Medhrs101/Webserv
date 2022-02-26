@@ -18,25 +18,23 @@
         return  _sockFD;
     }
     int     __socket::listen_socket(){
-        int ret;
+        int ret = 0;
 
         if (_sockFD > 0)
-            ret = listen(_sockFD, 20);
+            ret = listen(_sockFD, 0);
         return ret;
     }
     void    __socket::bindSock(int port, std::string interface){
         int opt = true;
         _address.sin_family = AF_INET;
         _address.sin_port = htons(port);
-        // _address.sin_addr.s_addr = inet_addr(interface.c_str());
-        // _address.sin_addr.s_addr = inet_addr("0.0.0.0");
         _address.sin_addr.s_addr = htonl(INADDR_ANY);
         if (setsockopt(_sockFD, SOL_SOCKET, SO_REUSEADDR , &opt, sizeof(opt)) == -1)
             throw Socketexeption(strerror(errno));
         int res = bind(_sockFD, (struct sockaddr *)&_address, _addrlen);
         if (res < 0){
-            // throw Socketexeption(strerror(errno));
-            throw Socketexeption("socket Bind");
+            std::string err = "socket Bind : " + interface;
+            throw Socketexeption(err.c_str());
         }
     }
     int const &__socket::getsocket() const{

@@ -1,9 +1,3 @@
-/**
- * @Author: Your name
- * @Date:   2022-01-21 18:25:18
- * @Last Modified by:   Your name
- * @Last Modified time: 2022-02-19 15:09:31
- */
 #include "../includes/Webserv.hpp"
 #include <string>
 request::request(/* args */)
@@ -37,8 +31,6 @@ request::request(std::vector<ServerData> data): _data(data)
 
 bool	request::handleRequests()
 {
-	//TODO: allowed method
-	// std::cout << _reqMethod << std::endl;
 	if (_reqMethod == "GET")
 		return GETRequest();
 	else if (_reqMethod == "POST")
@@ -52,7 +44,7 @@ void    request::requestParser(std::string req)
 {
 	std::string	ret;
 	_reqstr = req;
-	// std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
+	std::cout << "request str: |" <<  _reqstr << "|" << std::endl;
 	size_t i(0);
 	i = _reqstr.find("\r\n");
 	if (i == std::string::npos)
@@ -86,14 +78,7 @@ void    request::requestParser(std::string req)
 		return;
 	}
 	if (!handleRequests())
-	{
-		if (_reqMethod != "GET" && _reqMethod != "POST" && _reqMethod != "DELETE")
-		{
-			errorHandler("405 Not Allowed");
-			return;
-		}
 		return ;
-	}
 }
 
 void	pathCorrection(std::string & path)
@@ -245,7 +230,7 @@ bool	request::GETRequest()
 	{
 		if (access(_path.c_str(), R_OK))
 			return errorHandler("403 Forbidden");
-		if (_locations[_nbLocation].getAutoIndex() == true)
+		if (_locations[_nbLocation].getAutoIndex() == true && info.st_mode & S_IFDIR)
 		{
 			std::string ret;
 			if ((ret = autoIndexGenerator(response, _path)) != "OK")
@@ -253,10 +238,11 @@ bool	request::GETRequest()
 			response._headers["Connection"] = "keep-alive";
 			response._headers["Content-Type"] = "text/html";
 		}
-		if (info.st_mode & S_IFDIR)
+		else if (info.st_mode & S_IFDIR)
 		{
 			_path += "/" + _locations[_nbLocation].getDefaultFile();
 			pathCorrection(_path);
+			response._headers["Content-Type"] = contentType(_path);
 		}
 	}
 	else
@@ -272,10 +258,11 @@ bool	request::GETRequest()
 		}
 		else
 			return errorHandler("403 Forbidden");
+		response._headers["Content-Type"] = contentType(_path);
 	}
 	response._statusLine = HTTPV1;
 	response._statusLine += " " + returnCode;
-	response._headers["Content-Type"] = contentType(_path);
+	// response._headers["Content-Type"] = contentType(_path);
 	response._headers["Content-Length"] = std::to_string(response._body.length());
 	if (_header.count("Connection") == 0 || _header.find("Connection")->second == "closed")
 		response._headers["Connection"] = "closed";
@@ -285,7 +272,6 @@ bool	request::GETRequest()
 	size_t _dot = _path.find_last_of('.');
 	if (_dot != std::string::npos){
 		if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
-			// after_sgi_string(response);
 			if (after_sgi_string(response) == false)
 				return errorHandler("500 internal Server Error");
 		}
@@ -306,7 +292,7 @@ std::string	request::boundaryParser(std::string boundary, std::string str)
 	// std::cout << "boundary: |" << str << "|" << std::endl;
 	size_t i = str.find("--" + boundary + "--");
 	if (i == std::string::npos)
-		return ("500 internal Server Error");
+		return ("400 Bad Request");
 	str = str.substr(0, i + boundary.length() + 4);
 	i = boundary.length() + 4;
 	for (size_t z = 0; i < str.length(); z++)
@@ -397,7 +383,7 @@ bool	request::POSTRequest()
 						output.close();
 					}
 					else
-						return errorHandler("500 internal Server Error pew");
+						return errorHandler("500 internal Server Error");
 				}
 			}
 		}
@@ -419,7 +405,6 @@ bool	request::POSTRequest()
 		resp._headers["Connection"] = "keep-alive";
 	if (_path.find_last_of('.') != std::string::npos){
 		if (this->_path.substr(_path.find_last_of('.')) == ".php" || this->_path.substr(_path.find_last_of('.')) == ".py"){
-			// after_sgi_string(resp);
 			if (after_sgi_string(resp) == false)
 				return errorHandler("500 internal Server Error");
 		};
@@ -429,8 +414,6 @@ bool	request::POSTRequest()
 }
 
 bool    findInDir(std::string & path, std::string & root){
-    DIR *dr;
-    struct dirent *dir;
     char rpath[PATH_MAX];
     char roott[PATH_MAX];
 
@@ -527,13 +510,21 @@ void	request::findServer()
 			return ;
 		}
 	}
+	for(size_t j = 0; j < i; j++)
+	{
+		if (std::to_string(_data[j].getPort()) == _port)
+		{
+			_nbServer = j;
+			return ;
+		}
+	}
 	_nbServer = 0;
 }
 
 std::string	request::parseBody(std::string	reqBody)
 {
 	this->_bodyMessage = reqBody;
-	if (_bodyMessage.length() > _data[_nbServer].getClientBodySize() * 1000000)
+	if (_bodyMessage.length() > static_cast<size_t>(_data[_nbServer].getClientBodySize() * 1000000))
 	{
 		return ("413 Payload Too Large");
 	}
@@ -623,7 +614,7 @@ std::string    request::parseRequestLine(std::string reqLine)
 		return ret;
 	if ((ret = hundleUri(reqLine, ++i)) != "OK")
 		return ret;
-	if ((hundleHttpv(reqLine, ++i)) != "OK")
+	if ((ret = hundleHttpv(reqLine, ++i)) != "OK")
 		return ret;
 	return "OK";
 }
@@ -634,6 +625,8 @@ std::string    request::hundleMethod(std::string & reqLine, size_t & i)
 	if (i == std::string::npos || reqLine[i + 1] == ' ')
 		return ("400 Bad Request");
 	this->_reqMethod = reqLine.substr(0, i);
+	if (_reqMethod != "GET" && _reqMethod != "POST" && _reqMethod != "DELETE")
+		return ("405 Not Allowed");
 	return "OK";
 }
 
@@ -661,7 +654,7 @@ std::string    request::hundleHttpv(std::string & reqLine, size_t & j)
 		return ("400 Bad Request");
 	_httpVersion = reqLine.substr(j, i - j);
 	if (_httpVersion != HTTPV1)
-		return ("400 Bad Request");
+		return ("505 HTTP Version Not Supported");
 	return "OK";
 }
 
@@ -701,8 +694,6 @@ bool	request::errorHandler(std::string	msgError)
 	errorRsp._statusLine += msgError;
 	errorRsp._headers["Connection"] = "close";
 	errorRsp._headers["Content-Type"] = "text/html;";
-	// std::cout  << "statusCode: ||"<< statusCode << std::endl;
-		// std::cout << RED << "hello from here: ||" << _nbServer <<  RESET << std::endl;
 	if (_data[_nbServer].getErrorPageMap().count(statusCode) == 1)
 	{
 		std::string	errorPath  = _data[_nbServer].getErrorPageMap().find(statusCode)->second;
@@ -742,8 +733,7 @@ std::string	request::getPostData(){
 		query = this->_queryStr;
 		return query;
 	}
-	log BLU << "*******************************************" << RESET line;
-	for(int i = 0; i < blockPost.size(); i++){
+	for(size_t i = 0; i < blockPost.size(); i++){
 		if (blockPost[i].isFile){
 			query += blockPost[i].key + "=" + blockPost[i].filename;
 		}
@@ -760,7 +750,10 @@ std::string upCase(std::string str){
 	std::string ret;
 	for (size_t i = 0; i < str.length(); i++)
 	{
-		ret.append(1, toupper(str[i]));
+		if (str[i] == '-')
+			ret.append(1, '_');
+		else
+			ret.append(1, toupper(str[i]));
 	}
 	return ret;
 }
@@ -776,7 +769,7 @@ bool	request::after_sgi_string(response & response){
 	std::string ext = this->_path.substr(_path.find_last_of('.'));
 
 	std::vector<const char *> args;
-	for (int i = 0; i < this->_locations.size(); i++){
+	for (size_t i = 0; i < this->_locations.size(); i++){
 		if (this->_locations[i].isCGI()){
 			if (this->_locations[i].getPath() == ext){
 				struct stat st;
@@ -791,7 +784,6 @@ bool	request::after_sgi_string(response & response){
 			}
 		}
 	}
-	int i = 0;
     if (pipe(Opipe) < 0)
         return false;
 	if (pipe(Ipipe) < 0)
@@ -814,7 +806,6 @@ bool	request::after_sgi_string(response & response){
 	else if (this->_reqMethod == "POST"){
 		std::multimap<std::string, std::string>::iterator it = this->_header.find("Content-Type");
 		if (it != this->_header.end()){
-			std::cout << GRN << it->second << std::endl line  << RESET line;
 			if (it->second == "application/x-www-form-urlencoded"){
 				setenv("CONTENT_TYPE", "application/x-www-form-urlencoded", 1);
 				data = this->_queryStr;
@@ -832,14 +823,12 @@ bool	request::after_sgi_string(response & response){
 	}
 
     extern char **environ;
-	int IN_FD = dup(0);
-	int OUT_FD = dup(1);
-		std::cout << RED << "fork" << RESET << std::endl;
-
     pid = fork();
     if (pid < 0) 
         return false;
     else if (pid == 0){
+		int errfd = open("webserv_logs", O_CREAT | O_APPEND | O_RDWR);
+		dup2(errfd, 2);
         close(Opipe[0]);
 		close(Ipipe[1]);
         if (this->_reqMethod == "POST"){
@@ -867,10 +856,7 @@ bool	request::after_sgi_string(response & response){
 				return false;
 		}
 		close(Ipipe[1]);
-		std::cout << RED << "wait" << RESET << std::endl;
 		while ((res = read(Opipe[0], buff, sizeof(buff)))){
-			// if (res < 0)
-			// 	return false;
             body.append(buff, res);
 		}
 		wait(NULL);
@@ -886,9 +872,7 @@ bool	request::after_sgi_string(response & response){
 					if(key != "Set-Cookie")
 						response._headers[key] = value.substr(0, value.find_first_of('\r'));
 					else
-					{
 						response._cookie.insert(std::make_pair(key, value.substr(0, value.find_first_of('\r'))));
-					}
 				}
 				token = ::strtok(NULL, "\n");
 			}
@@ -896,8 +880,6 @@ bool	request::after_sgi_string(response & response){
 		}catch (std::exception &e){
 			return false;
 		}
-		std::cout << RED << "after catch" << RESET << std::endl;
-		std::cout << RED << body << RESET << std::endl;
 		response._headers["Content-Length"] = std::to_string(response._body.size());
 		close(Opipe[0]);
     }

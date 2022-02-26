@@ -36,9 +36,8 @@ typedef struct	t_blockPost
 
 class request
 {
-public:
-	std::string									_responseStr;
 private:
+	std::string									_responseStr;
 	std::string									_reqstr;
 	std::string									_reqLine;
 	std::string 								_reqMethod;

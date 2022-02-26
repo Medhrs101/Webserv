@@ -1,6 +1,6 @@
 #include "../includes/Webserv.hpp"
 
-void	rootVer(std::vector<ServerData> data){
+void	rootVer(std::vector<ServerData> const & data){
 	for (size_t i = 0; i < data.size(); i++){
 		struct stat info;
 		if(stat(data[i].getRootDir().c_str(), &info) != 0){

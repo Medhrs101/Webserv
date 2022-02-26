@@ -28,7 +28,6 @@ void    IOhandler::addToQueue(queue elm){
             return ;
         }
     }
-    std::cout << "add new elemnt" << std::endl;
     _reqQueue.push_back(elm);
 };
 
@@ -138,7 +137,7 @@ void    IOhandler::outputEvent(int fd, int index){
         if (current.getReqSent() < reqSize){
             return ;
         }
-        std::cout << GREEN << "/e[1m<<" << " Response sent :" << sen << RESET << std::endl;
+        // std::cout << GREEN << "/e[1m<<" << " Response sent :" << sen << RESET << std::endl;
         if (current.getReq().getHeaderOf("Connection").first == false || (current.getReq().getHeaderOf("Connection").first == true && current.getReq().getHeaderOf("Connection").second->second == "close")){
             this->deleteS(index);
             return;
@@ -155,7 +154,7 @@ void    IOhandler::deleteS(int index){
         _pollfd_list.erase(_pollfd_list.begin() + index);
         removeQueue(fd);
         _fdNum--;
-        std::cout << RED << "\e[1m" << "Connection Closed With Client" << RESET << std::endl;
+        // std::cout << RED << "\e[1m" << "Connection Closed With Client" << RESET << std::endl;
     }
 };
 
@@ -171,7 +170,7 @@ void    IOhandler::IOwatch(){
             std::cerr << "FATAL error -poll-: " << strerror(errno);
         }
         size = _fdNum;
-        for (int i = 0; i < _pollfd_list.size(); i++)
+        for (size_t i = 0; i < _pollfd_list.size(); i++)
         {
             if (_pollfd_list[i].revents == 0)
                 continue ;
@@ -179,7 +178,6 @@ void    IOhandler::IOwatch(){
                 this->deleteS(i);
                 continue ;
             }
-            std::cout << BLU << _pollfd_list.size() << RESET << std::endl;
             fd = _pollfd_list[i].fd;
             if (_pollfd_list[i].revents & POLLIN){
                 inputEvent(fd, i);
@@ -212,7 +210,6 @@ IOhandler::~IOhandler(){};
         else if (res < 0){
             this->deleteS(i);
             *n = -1;
-            std::cout << BLU << "\e[1m" << "read Error";
         }
         else{
             ret.append(buff, res);

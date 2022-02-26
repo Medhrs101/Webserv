@@ -19,7 +19,7 @@
                 shutdown(_socket_list[i].getsocket(), SHUT_RDWR);
             }
             else{
-                std::cout <<  CYN << "LISTENING ON  " << _data[i].getHost() << _data[i].getPort() << std::endl;
+                std::cout <<  CYN << "LISTENING ON  " << _data[i].getHost() << ':' << _data[i].getPort() << std::endl;
                 Ports.push_back(_data[i].getPort());
             }
         }
