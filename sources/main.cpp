@@ -1,5 +1,20 @@
 #include "../includes/Webserv.hpp"
 
+void	rootVer(std::vector<ServerData> const & data){
+	for (size_t i = 0; i < data.size(); i++){
+		struct stat info;
+		if(stat(data[i].getRootDir().c_str(), &info) != 0){
+			throw std::runtime_error("Incorrect main root;");
+		}
+		for(size_t j = 0; j < data[i].getLocations().size(); j++){
+			if (!data[i].getLocations()[j].getRootDir().empty()){
+				if(stat(data[i].getLocations()[j].getRootDir().c_str(), &info) != 0){
+					throw std::runtime_error("Incorrect root;");
+				}
+			}
+		}
+	}
+}
 
 int main(int ac, char **av)
 {
@@ -7,9 +22,9 @@ int main(int ac, char **av)
 	{
 		ConfigParser parser(ac, av);
 
+		rootVer(parser.getServers());
 		server Server(parser.getServers());
         Server.init();
-		// request req("GET ///// HTTP/1.1\r\n\r\n", parser.getServers());
 	}
 	catch (std::exception &e)
 	{

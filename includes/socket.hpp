@@ -3,6 +3,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+// #include <sys/epoll.h>
 #include <arpa/inet.h>
 #include <cerrno>
 #include <cstring>
@@ -27,16 +28,17 @@
         public:
         private:
             int _sockFD;
-            struct sockaddr_in &_address;
+            struct sockaddr_in _address;
             size_t     _addrlen;
         public:
-            // __socket(int port, std::string host, struct sockaddr_in &address);
-            __socket(struct sockaddr_in &address);
+            __socket();
             int     init(int port, std::string host);
             void bindSock(int port, std::string interface);
+            int    listen_socket();
             int const   &getsocket() const;
+            struct sockaddr_in  getAddress();
             ~__socket();
     };
 
 
-#endif /* SOCKET_HPP */
+#endif

@@ -1,3 +1,6 @@
 .vscode
 .DS_*
 a.out
+outputParser
+webserv_logs
+ignore_*
