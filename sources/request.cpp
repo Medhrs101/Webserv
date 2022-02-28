@@ -861,8 +861,8 @@ bool	request::after_sgi_string(response & response){
 		}
 		wait(NULL);
 		try{
-			char *header = ::strdup(body.substr(0, body.find("\n\r")).c_str());
-			char *token = ::strtok(header, "\n");
+			std::string header = body.substr(0, body.find("\n\r"));
+			char *token = ::strtok((char *)header.c_str(), "\n");
 			while (token != NULL)
 			{
 				{
