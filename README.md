@@ -15,7 +15,7 @@
 </br><hr></br>
 
 **Subject :**</br>
-&emsp; [Subject.pdf](other_file.md)
+&emsp; [Subject.pdf](https://github.com/Ymarji/Webserv-1/blob/main/en.subject.pdf)
 
 ***start :***</br>
 &emsp; >> To start with a simple explanation to what you need ,and how a simple http server work,<br/> here is an awesome **[medium article](https://medium.com/from-the-scratch/http-server-what-do-you-need-to-know-to-build-a-simple-http-server-from-scratch-d1ef8945e4fa)**
