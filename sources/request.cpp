@@ -204,7 +204,7 @@ bool	request::GETRequest()
 {
 	response		response;
 	std::ifstream 	file;
-	std::string		returnCode = " 200 OK";
+	std::string		returnCode;
 	std::string		errorMessage;
 	struct stat		info;
 	std::string		root;
